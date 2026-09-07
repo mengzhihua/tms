@@ -13,6 +13,9 @@
         <el-table-column prop="consigneeName" label="收货人" width="110" />
         <el-table-column prop="totalQty" label="件数" width="80" />
         <el-table-column prop="chargeableWeightKg" label="计费重(kg)" width="110" />
+        <el-table-column label="创建时间" width="175">
+          <template #default="{ row }">{{ fmt(row.createdAt) }}</template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }"><StatusTag :value="row.status" /></template>
         </el-table-column>
@@ -48,7 +51,22 @@
             <el-form-item label="来源单号"><el-input v-model="form.sourceNo" /></el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="客户编码"><el-input v-model="form.customerCode" /></el-form-item>
+            <el-form-item label="客户">
+              <el-select
+                v-model="form.customerCode"
+                filterable
+                clearable
+                style="width: 100%"
+                @change="customerChanged"
+              >
+                <el-option
+                  v-for="customer in customers"
+                  :key="customer.code"
+                  :label="`${customer.code} ${customer.name || ''}`"
+                  :value="customer.code"
+                />
+              </el-select>
+            </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="订单类型">
@@ -104,6 +122,15 @@
           <el-table-column label="单件重量" width="110">
             <template #default="{ row }"><el-input-number v-model="row.weightKg" :min="0" /></template>
           </el-table-column>
+          <el-table-column label="体积(m³)" width="110">
+            <template #default="{ row }">{{ lineVolume(row).toFixed(6) }}</template>
+          </el-table-column>
+          <el-table-column label="体积重(kg)" width="110">
+            <template #default="{ row }">{{ lineVolumetricWeight(row).toFixed(3) }}</template>
+          </el-table-column>
+          <el-table-column label="计费重(kg)" width="110">
+            <template #default="{ row }">{{ lineChargeableWeight(row).toFixed(3) }}</template>
+          </el-table-column>
           <el-table-column label="操作" width="70">
             <template #default="{ $index }">
               <el-button link type="danger" @click="form.lines.splice($index, 1)">删</el-button>
@@ -111,6 +138,12 @@
           </el-table-column>
         </el-table>
         <el-button style="margin-top: 8px" @click="addLine">添加明细</el-button>
+        <div class="order-summary">
+          <span>合计体积：{{ estimate.totalVolume.toFixed(6) }} m³</span>
+          <span>合计重量：{{ estimate.totalWeight.toFixed(3) }} kg</span>
+          <span>体积重：{{ estimate.volumetricWeight.toFixed(3) }} kg</span>
+          <strong>计费重：{{ estimate.chargeableWeight.toFixed(3) }} kg</strong>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -121,17 +154,36 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { order } from '../../api'
+import { basic, order } from '../../api'
 import StatusTag from '../../components/StatusTag.vue'
+import { fmt } from '../../utils'
 
 const rows = ref([])
 const total = ref(0)
 const loading = ref(false)
 const visible = ref(false)
 const form = ref({})
+const customers = ref([])
 const query = reactive({ current: 1, size: 20, keyword: '' })
+
+const estimate = computed(() => {
+  const lines = form.value.lines || []
+  const totalVolume = lines.reduce((sum, line) => sum + lineVolume(line), 0)
+  const totalWeight = lines.reduce(
+    (sum, line) => sum + Number(line.weightKg || 0) * Number(line.qty || 0),
+    0
+  )
+  const ratio = Number(form.value.volumeRatio || 6000)
+  const volumetricWeight = ratio > 0 ? (totalVolume * 1000000) / ratio : 0
+  return {
+    totalVolume,
+    totalWeight,
+    volumetricWeight,
+    chargeableWeight: Math.max(totalWeight, volumetricWeight)
+  }
+})
 
 async function load() {
   loading.value = true
@@ -153,12 +205,41 @@ function emptyForm() {
   }
 }
 
+function lineVolume(line) {
+  const unitVolume =
+    Number(line.volumeM3 || 0) ||
+    (Number(line.lengthCm || 0) * Number(line.widthCm || 0) * Number(line.heightCm || 0)) /
+      1000000
+  return unitVolume * Number(line.qty || 0)
+}
+
+function lineVolumetricWeight(line) {
+  const ratio = Number(form.value.volumeRatio || 6000)
+  return ratio > 0 ? (lineVolume(line) * 1000000) / ratio : 0
+}
+
+function lineChargeableWeight(line) {
+  return Math.max(lineVolumetricWeight(line), Number(line.weightKg || 0) * Number(line.qty || 0))
+}
+
 async function openForm(row) {
   form.value = row ? await order.get(row.id) : emptyForm()
   if (!form.value.lines) {
     form.value.lines = []
   }
   visible.value = true
+}
+
+function customerChanged() {
+  const customer = customers.value.find((item) => item.code === form.value.customerCode)
+  if (!customer) {
+    return
+  }
+  form.value.consigneeName = customer.contact || customer.name
+  form.value.consigneePhone = customer.phone
+  form.value.consigneeAddress = customer.address
+  form.value.consigneeLng = customer.lng
+  form.value.consigneeLat = customer.lat
 }
 
 function addLine() {
@@ -182,5 +263,8 @@ async function cancel(row) {
   await load()
 }
 
-onMounted(load)
+onMounted(async () => {
+  customers.value = (await basic.customer.list({ size: 200 })) || []
+  await load()
+})
 </script>

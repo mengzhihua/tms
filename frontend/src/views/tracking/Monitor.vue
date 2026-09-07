@@ -15,6 +15,12 @@
           <el-table :data="vehicles" size="small" @row-click="selected = $event">
             <el-table-column prop="plateNo" label="车牌" />
             <el-table-column prop="status" label="状态" />
+            <el-table-column label="当前运单" min-width="150">
+              <template #default="{ row }">{{ row.waybill?.code || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="运单状态" width="110">
+              <template #default="{ row }">{{ row.waybill?.status || '-' }}</template>
+            </el-table-column>
             <el-table-column label="操作">
               <template #default="{ row }">
                 <el-button link @click="simulate(row)">模拟行驶</el-button>
@@ -54,7 +60,9 @@ async function load() {
     basic.site.list({ size: 200 }),
     basic.geofence.list({ size: 200 })
   ])
-  vehicles.value = (vehicleRows || []).map((item) => item.vehicle).filter(Boolean)
+  vehicles.value = (vehicleRows || [])
+    .filter((item) => item.vehicle)
+    .map((item) => ({ ...item.vehicle, waybill: item.waybill }))
   sites.value = siteRows || []
   fences.value = fenceRows || []
 }
@@ -66,7 +74,7 @@ async function submitGps() {
 }
 
 async function simulate(row) {
-  const waybillId = row.waybillId || selected.value?.waybill?.id
+  const waybillId = row.waybill?.id || row.waybillId || selected.value?.waybill?.id
   if (!waybillId) {
     ElMessage.warning('车辆没有在途运单')
     return

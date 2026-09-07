@@ -65,3 +65,42 @@ body,
 .muted {
   color: #909399;
 }
+
+.dispatch-summary,
+.order-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  color: #606266;
+  font-size: 13px;
+}
+
+.order-summary strong {
+  color: #303133;
+}
+
+.load-check {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.load-check-title {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  color: #606266;
+  font-size: 12px;
+}
+
+.danger-text {
+  color: #f56c6c;
+}
+
+.detail-actions {
+  padding: 8px 0;
+  margin-bottom: 4px;
+}

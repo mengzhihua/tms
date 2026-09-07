@@ -13,7 +13,9 @@
         <el-table-column prop="eventType" label="事件类型" />
         <el-table-column prop="description" label="描述" />
         <el-table-column prop="source" label="来源" />
-        <el-table-column prop="eventTime" label="时间" />
+        <el-table-column label="时间" width="175">
+          <template #default="{ row }">{{ fmt(row.eventTime) }}</template>
+        </el-table-column>
         <el-table-column prop="lng" label="经度" />
         <el-table-column prop="lat" label="纬度" />
       </el-table>
@@ -27,6 +29,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { tracking } from '../../api'
+import { fmt } from '../../utils'
 
 const types = ['CREATED', 'DISPATCHED', 'DEPARTED', 'GPS', 'GEOFENCE_ENTER', 'GEOFENCE_EXIT', 'ARRIVED', 'SIGNED', 'THIRD_PARTY']
 const rows = ref([])

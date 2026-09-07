@@ -45,7 +45,9 @@
           <el-table :data="data.recentEvents || []" size="small">
             <el-table-column prop="eventType" label="类型" width="140" />
             <el-table-column prop="description" label="描述" />
-            <el-table-column prop="eventTime" label="时间" />
+            <el-table-column label="时间" width="175">
+              <template #default="{ row }">{{ fmt(row.eventTime) }}</template>
+            </el-table-column>
           </el-table>
         </div>
       </el-col>
@@ -56,6 +58,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { dashboard } from '../api'
+import { fmt } from '../utils'
 
 const data = ref({})
 

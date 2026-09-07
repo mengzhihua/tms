@@ -16,6 +16,9 @@
         <el-table-column prop="chargeType" label="类型" />
         <el-table-column prop="quantity" label="计费量" />
         <el-table-column prop="amount" label="金额" />
+        <el-table-column label="创建时间" width="175">
+          <template #default="{ row }">{{ fmt(row.createdAt) }}</template>
+        </el-table-column>
         <el-table-column prop="status" label="状态">
           <template #default="{ row }"><StatusTag :value="row.status" /></template>
         </el-table-column>
@@ -37,6 +40,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { billing } from '../../api'
 import StatusTag from '../../components/StatusTag.vue'
+import { fmt } from '../../utils'
 
 const rows = ref([])
 const total = ref(0)

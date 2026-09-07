@@ -12,7 +12,9 @@
         <el-table-column prop="waybillCode" label="运单号" />
         <el-table-column prop="geofenceName" label="围栏" />
         <el-table-column prop="alertType" label="类型" />
-        <el-table-column prop="alertTime" label="时间" />
+        <el-table-column label="时间" width="175">
+          <template #default="{ row }">{{ fmt(row.alertTime) }}</template>
+        </el-table-column>
         <el-table-column prop="handled" label="已处理">
           <template #default="{ row }">{{ row.handled ? '是' : '否' }}</template>
         </el-table-column>
@@ -33,6 +35,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { tracking } from '../../api'
+import { fmt } from '../../utils'
 
 const rows = ref([])
 const total = ref(0)
