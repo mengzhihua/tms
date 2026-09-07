@@ -31,6 +31,7 @@ export const order = {
   create: (data) => http.post('/order', data),
   update: (id, data) => http.put(`/order/${id}`, data),
   cancel: (id) => http.post(`/order/${id}/cancel`),
+  reverse: (id, data) => http.post(`/order/${id}/reverse`, data),
   volume: (data) => http.post('/order/volume/calc', data),
   loadCheck: (data) => http.post('/order/volume/load-check', data)
 }
@@ -108,7 +109,7 @@ export const report = {
   transitSign: (params) => http.get('/report/transit-sign', { params }),
   quality: (params) => http.get('/report/quality', { params }),
   orderStructure: (params) => http.get('/report/order-structure', { params }),
-  alertSummary: () => http.get('/report/alert-summary')
+  alertSummary: (params) => http.get('/report/alert-summary', { params })
 }
 
 export const pushLog = {

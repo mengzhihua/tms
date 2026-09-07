@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class PushLogController {
     private final PushLogMapper mapper;
+    private final RoutePushService service;
 
     @GetMapping("/page")
     public R<Page<PushLog>> page(
@@ -24,12 +25,7 @@ public class PushLogController {
 
     @PostMapping("/{id}/retry")
     public R<PushLog> retry(@PathVariable Long id) {
-        PushLog item = mapper.selectById(id);
-        item.setStatus("PENDING");
-        item.setSuccess(false);
-        item.setRetryCount(item.getRetryCount() == null ? 1 : item.getRetryCount() + 1);
-        mapper.updateById(item);
-        return R.ok(item);
+        return R.ok(service.retry(id));
     }
 
     @PostMapping("/mock-receiver")

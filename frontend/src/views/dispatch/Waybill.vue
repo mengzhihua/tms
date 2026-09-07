@@ -16,7 +16,7 @@
         <el-table-column label="创建时间" width="175">
           <template #default="{ row }">{{ fmt(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="430">
+        <el-table-column label="操作" width="540">
           <template #default="{ row }">
             <el-button v-if="row.status === 'CREATED'" link @click="action(row, 'dispatch')">调度</el-button>
             <el-button
@@ -28,6 +28,21 @@
               取消
             </el-button>
             <el-button v-if="row.status === 'DISPATCHED'" link @click="action(row, 'depart')">发车</el-button>
+            <el-button
+              v-if="row.status === 'DISPATCHED' && row.carrierType === 'SELF'"
+              link
+              type="warning"
+              @click="openLoad(row)"
+            >
+              装车交接
+            </el-button>
+            <el-button
+              v-if="row.carrierType === 'SELF'"
+              link
+              @click="openLoadingSheet(row)"
+            >
+              装车单
+            </el-button>
             <el-button
               v-if="row.status === 'DISPATCHED' && row.thirdPartyNo"
               link
@@ -56,6 +71,14 @@
         <el-descriptions-item label="创建时间">{{ fmt(current.createdAt) }}</el-descriptions-item>
         <el-descriptions-item label="发车时间">{{ fmt(current.actualDepartTime) }}</el-descriptions-item>
         <el-descriptions-item label="到达时间">{{ fmt(current.actualArriveTime) }}</el-descriptions-item>
+        <el-descriptions-item label="承诺到达">{{ fmt(current.promisedArriveTime) }}</el-descriptions-item>
+        <el-descriptions-item label="准时">
+          <el-tag v-if="current.onTime === true" type="success">准时</el-tag>
+          <el-tag v-else-if="current.onTime === false" type="danger">超时</el-tag>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="装车状态">{{ current.loadStatus || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="封签号">{{ current.sealNo || '-' }}</el-descriptions-item>
       </el-descriptions>
       <div v-if="current" class="toolbar detail-actions">
         <el-button v-if="current.status === 'CREATED'" type="primary" @click="operate('dispatch')">调度</el-button>
@@ -68,6 +91,19 @@
           取消
         </el-button>
         <el-button v-if="current.status === 'DISPATCHED'" type="primary" @click="operate('depart')">发车</el-button>
+        <el-button
+          v-if="current.status === 'DISPATCHED' && current.carrierType === 'SELF'"
+          type="warning"
+          @click="openLoad(current)"
+        >
+          装车交接
+        </el-button>
+        <el-button
+          v-if="current.carrierType === 'SELF'"
+          @click="openLoadingSheet(current)"
+        >
+          装车单
+        </el-button>
         <el-button
           v-if="current.status === 'DISPATCHED' && current.thirdPartyNo"
           @click="operate('syncTrack')"
@@ -124,12 +160,34 @@
         <el-button type="primary" @click="submitSign">确认签收</el-button>
       </template>
     </el-dialog>
+    <el-dialog v-model="loadVisible" title="装车交接" width="520px">
+      <el-form :model="loadForm" label-width="90px">
+        <el-form-item label="订单">
+          <el-checkbox-group v-model="loadForm.orderCodes">
+            <el-checkbox
+              v-for="item in (current?.orders || [])"
+              :key="item.code"
+              :label="item.code"
+            >
+              {{ item.code }} {{ item.consigneeName || '' }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="封签号"><el-input v-model="loadForm.sealNo" /></el-form-item>
+        <el-form-item label="装车人"><el-input v-model="loadForm.loaderName" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="loadVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitLoad">确认交接</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { tracking, waybill } from '../../api'
 import StatusTag from '../../components/StatusTag.vue'
 import { fmt } from '../../utils'
@@ -141,6 +199,9 @@ const current = ref(null)
 const signVisible = ref(false)
 const signOrder = ref(null)
 const signForm = reactive({ signer: '前端签收', exception: false, remark: '' })
+const loadVisible = ref(false)
+const loadForm = reactive({ sealNo: '', loaderName: '', orderCodes: [] })
+const router = useRouter()
 
 async function load() {
   const page = await waybill.page(query)
@@ -156,6 +217,26 @@ async function action(row, name) {
 async function detail(row) {
   current.value = await waybill.get(row.id)
   visible.value = true
+}
+
+async function openLoad(row) {
+  current.value = await waybill.get(row.id)
+  loadForm.sealNo = current.value.sealNo || ''
+  loadForm.loaderName = current.value.loaderName || ''
+  loadForm.orderCodes = (current.value.orders || []).map((item) => item.code)
+  loadVisible.value = true
+}
+
+async function submitLoad() {
+  await waybill.load(current.value.id, { ...loadForm })
+  ElMessage.success('装车交接完成')
+  loadVisible.value = false
+  await detail(current.value)
+  await load()
+}
+
+function openLoadingSheet(row) {
+  router.push(`/dispatch/loading-sheet/${row.id}`)
 }
 
 async function operate(name) {

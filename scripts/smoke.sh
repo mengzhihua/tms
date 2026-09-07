@@ -8,8 +8,8 @@ call(){ local out; out=$(curl -sf -X "$1" "$BASE$2" -H "$J" ${3:+-d "$3"}); [ "$
 echo "== 1 volume"
 V=$(call POST /order/volume/calc '{"volumeRatio":6000,"lines":[{"qty":2,"lengthCm":100,"widthCm":50,"heightCm":20,"weightKg":3}]}'); test "$(echo "$V"|jq -r .chargeableWeightKg)" = "33.333"
 echo "== 2 create self orders"
-O1=$(call POST /order '{"customerCode":"CUS01","orderType":"DELIVERY","fromSiteCode":"WH01","consigneeName":"苏州客户","consigneeLng":120.60,"consigneeLat":31.32,"lines":[{"itemCode":"SKU1","itemName":"货物","qty":2,"lengthCm":100,"widthCm":50,"heightCm":20,"weightKg":3}]}')
-O2=$(call POST /order '{"customerCode":"CUS02","orderType":"DELIVERY","fromSiteCode":"WH01","consigneeName":"杭州客户","consigneeLng":120.15,"consigneeLat":30.27,"lines":[{"itemCode":"SKU2","itemName":"货物","qty":1,"lengthCm":100,"widthCm":50,"heightCm":20,"weightKg":2}]}')
+O1=$(call POST /order '{"customerCode":"CUS01","orderType":"DELIVERY","fromSiteCode":"WH01","serviceLevelCode":"EXPRESS","regionCode":"EAST","consigneeName":"苏州客户","consigneeLng":120.60,"consigneeLat":31.32,"lines":[{"itemCode":"SKU1","itemName":"货物","qty":2,"lengthCm":100,"widthCm":50,"heightCm":20,"weightKg":3}]}')
+O2=$(call POST /order '{"customerCode":"CUS02","orderType":"DELIVERY","fromSiteCode":"WH01","serviceLevelCode":"STANDARD","regionCode":"EAST","consigneeName":"杭州客户","consigneeLng":120.15,"consigneeLat":30.27,"lines":[{"itemCode":"SKU2","itemName":"货物","qty":1,"lengthCm":100,"widthCm":50,"heightCm":20,"weightKg":2}]}')
 I1=$(echo "$O1"|jq -r .id); I2=$(echo "$O2"|jq -r .id)
 echo "== 2b intelligent selection and open API"
 REC=$(call GET "/selection/recommend/$I1"); test "$(echo "$REC"|jq 'length')" -ge 1
@@ -28,6 +28,8 @@ W=$(call POST "/waybill/$WID/dispatch"); test "$(echo "$W"|jq -r .freightAmount)
 call POST "/waybill/$WID/load" "{\"sealNo\":\"SEAL-$WID\",\"loaderName\":\"装卸班组\",\"orderCodes\":[\"$(echo "$O1"|jq -r .code)\",\"$(echo "$O2"|jq -r .code)\"]}" >/dev/null
 call GET "/waybill/$WID/loading-sheet" >/dev/null
 call POST "/waybill/$WID/depart" >/dev/null
+W=$(call GET "/waybill/$WID")
+test "$(echo "$W"|jq -r .promisedArriveTime)" != "null"
 echo "== 5 simulate GPS and geofence"
 call POST "/tracking/simulate/$WID?steps=10" | tee /tmp/tms-sim.json
 test "$(jq -r '.' /tmp/tms-sim.json)" -gt 0
@@ -55,7 +57,10 @@ call POST "/exception/$EXID/claim-pay" >/dev/null
 call POST "/exception/scan" >/dev/null
 MONTH=$(date +%Y-%m); call POST "/rating/compute?period=$MONTH" >/dev/null
 for ENDPOINT in /report/sla /report/sla-flow /report/transit-sign /report/quality /report/order-structure /report/alert-summary; do call GET "$ENDPOINT" >/dev/null; done
-PUSH=$(call GET "/push-log/page?size=100"); test "$(echo "$PUSH"|jq '[.records[]|select(.status=="SUCCESS")]|length')" -ge 1
+PUSH=$(call GET "/push-log/page?size=100")
+test "$(echo "$PUSH"|jq '[.records[]|select(.status=="SUCCESS" and .responseCode==200)]|length')" -ge 1
+STRUCTURE=$(call GET "/report/order-structure")
+test "$(echo "$STRUCTURE"|jq '.byCustomer|length')" -gt 0
 echo "== 7 dashboard"
 call GET /dashboard | jq -c '{orderStatusCounts,waybillStatusCounts,unhandledAlerts}'
 echo "SMOKE OK"

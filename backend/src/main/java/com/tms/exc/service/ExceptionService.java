@@ -7,6 +7,9 @@ import com.tms.dispatch.entity.Waybill;
 import com.tms.dispatch.mapper.WaybillMapper;
 import com.tms.exc.entity.TransportException;
 import com.tms.exc.mapper.TransportExceptionMapper;
+import com.tms.openapi.RoutePushService;
+import com.tms.order.entity.TransportOrder;
+import com.tms.order.mapper.TransportOrderMapper;
 import com.tms.tracking.entity.TrackingEvent;
 import com.tms.tracking.mapper.TrackingEventMapper;
 import java.math.BigDecimal;
@@ -26,6 +29,8 @@ public class ExceptionService {
     private final WaybillMapper waybillMapper;
     private final TrackingEventMapper eventMapper;
     private final CodeGenerator codeGenerator;
+    private final TransportOrderMapper orderMapper;
+    private final RoutePushService routePushService;
 
     @Transactional
     public TransportException create(TransportException input) {
@@ -42,6 +47,21 @@ public class ExceptionService {
         }
         input.setClaimFlag(Boolean.TRUE.equals(input.getClaimFlag()));
         mapper.insert(input);
+        if (input.getOrderId() != null) {
+            TransportOrder order = orderMapper.selectById(input.getOrderId());
+            if (order != null) {
+                routePushService.push(
+                        order.getCustomerCode(),
+                        order.getCode(),
+                        order.getSourceNo(),
+                        "EXCEPTION",
+                        "EXCEPTION",
+                        input.getDescription(),
+                        input.getWaybillId() == null
+                                ? null
+                                : waybillMapper.selectById(input.getWaybillId()));
+            }
+        }
         if (input.getWaybillId() != null) {
             Waybill waybill = waybillMapper.selectById(input.getWaybillId());
             if (waybill != null) {

@@ -2,8 +2,10 @@ package com.tms.dispatch.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tms.basic.entity.Carrier;
+import com.tms.basic.entity.CarrierCoverage;
 import com.tms.basic.entity.Driver;
 import com.tms.basic.entity.Route;
+import com.tms.basic.mapper.CarrierCoverageMapper;
 import com.tms.basic.entity.Vehicle;
 import com.tms.basic.mapper.CarrierMapper;
 import com.tms.basic.mapper.DriverMapper;
@@ -44,6 +46,7 @@ public class DispatchService {
     private final VehicleMapper vehicleMapper;
     private final DriverMapper driverMapper;
     private final CarrierMapper carrierMapper;
+    private final CarrierCoverageMapper coverageMapper;
     private final RouteMapper routeMapper;
     private final TrackingEventMapper eventMapper;
     private final CodeGenerator codeGenerator;
@@ -159,6 +162,16 @@ public class DispatchService {
                                 new LambdaQueryWrapper<Route>().eq(Route::getCode, w.getRouteCode()));
         BigDecimal distance = route == null ? BigDecimal.ZERO : route.getDistanceKm();
         for (TransportOrder o : orders(w)) {
+            routePushService.push(
+                    o.getCustomerCode(),
+                    o.getCode(),
+                    o.getSourceNo(),
+                    "DISPATCHED",
+                    "DISPATCHED",
+                    "运单已调度",
+                    w);
+        }
+        for (TransportOrder o : orders(w)) {
             freight = freight.add(billingService.createBill(w, o, distance));
         }
         w.setFreightAmount(freight);
@@ -178,15 +191,20 @@ public class DispatchService {
         }
         w.setStatus("IN_TRANSIT");
         w.setActualDepartTime(LocalDateTime.now());
-        if (w.getServiceLevelCode() != null) {
+        BigDecimal promisedHours = coverageHours(w);
+        if (promisedHours == null && w.getServiceLevelCode() != null) {
             ServiceLevel level =
                     serviceLevelMapper.selectOne(
                             new LambdaQueryWrapper<ServiceLevel>()
                                     .eq(ServiceLevel::getCode, w.getServiceLevelCode()));
-            if (level != null && level.getPromisedHours() != null) {
-                w.setPromisedArriveTime(
-                        w.getActualDepartTime().plusMinutes(level.getPromisedHours().multiply(new BigDecimal("60")).longValue()));
+            if (level != null) {
+                promisedHours = level.getPromisedHours();
             }
+        }
+        if (promisedHours != null) {
+            w.setPromisedArriveTime(
+                    w.getActualDepartTime()
+                            .plusMinutes(promisedHours.multiply(new BigDecimal("60")).longValue()));
         }
         waybillMapper.updateById(w);
         if (w.getVehiclePlate() != null) {
@@ -201,6 +219,14 @@ public class DispatchService {
         for (TransportOrder o : orders(w)) {
             o.setStatus("IN_TRANSIT");
             orderMapper.updateById(o);
+            routePushService.push(
+                    o.getCustomerCode(),
+                    o.getCode(),
+                    o.getSourceNo(),
+                    "IN_TRANSIT",
+                    "IN_TRANSIT",
+                    "运单已发车",
+                    w);
         }
         event(w, null, "DEPARTED", null, null, "已发车");
         return load(id);
@@ -218,6 +244,16 @@ public class DispatchService {
             w.setOnTime(!w.getActualArriveTime().isAfter(w.getPromisedArriveTime()));
         }
         waybillMapper.updateById(w);
+        for (TransportOrder o : orders(w)) {
+            routePushService.push(
+                    o.getCustomerCode(),
+                    o.getCode(),
+                    o.getSourceNo(),
+                    "ARRIVED",
+                    "ARRIVED",
+                    "运单已到达",
+                    w);
+        }
         event(w, null, "ARRIVED", null, null, "已到达");
         return load(id);
     }
@@ -241,9 +277,11 @@ public class DispatchService {
         routePushService.push(
                 o.getCustomerCode(),
                 o.getCode(),
+                o.getSourceNo(),
                 o.getStatus(),
                 Boolean.TRUE.equals(req.exception) ? "EXCEPTION" : "DELIVERED",
-                req.remark);
+                req.remark,
+                w);
         podService.create(w, o, req.podImage);
         if (Boolean.TRUE.equals(req.exception)) {
             TransportException exception = new TransportException();
@@ -396,6 +434,14 @@ public class DispatchService {
             gateway.cancel(w.getCarrierCode(), w.getThirdPartyNo());
         }
         for (TransportOrder o : orders(w)) {
+            routePushService.push(
+                    o.getCustomerCode(),
+                    o.getCode(),
+                    o.getSourceNo(),
+                    "CANCELLED",
+                    "CANCELLED",
+                    "运单已取消",
+                    w);
             o.setStatus("CREATED");
             o.setWaybillId(null);
             o.setWaybillCode(null);
@@ -509,6 +555,34 @@ public class DispatchService {
                 .map(TransportOrder::getTotalVolumeM3)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal coverageHours(Waybill waybill) {
+        List<TransportOrder> linked = orders(waybill);
+        if (linked.isEmpty() || linked.get(0).getRegionCode() == null) {
+            return null;
+        }
+        TransportOrder order = linked.get(0);
+        List<CarrierCoverage> rows =
+                coverageMapper.selectList(
+                        new LambdaQueryWrapper<CarrierCoverage>()
+                                .eq(CarrierCoverage::getCarrierCode, waybill.getCarrierCode())
+                                .eq(CarrierCoverage::getRegionCode, order.getRegionCode())
+                                .eq(CarrierCoverage::getStatus, "ENABLED"));
+        CarrierCoverage fallback = null;
+        for (CarrierCoverage row : rows) {
+            if (row.getServiceLevelCode() == null) {
+                fallback = row;
+            }
+            if (waybill.getServiceLevelCode() == null
+                    || row.getServiceLevelCode() == null
+                    || waybill.getServiceLevelCode().equals(row.getServiceLevelCode())) {
+                if (row.getPromisedHours() != null) {
+                    return row.getPromisedHours();
+                }
+            }
+        }
+        return fallback == null ? null : fallback.getPromisedHours();
     }
 
     private void event(

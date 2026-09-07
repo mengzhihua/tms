@@ -43,7 +43,8 @@ export const menus = [
     icon: 'Van',
     children: [
       { path: 'console', name: '调度台', component: () => import('../views/dispatch/Dispatch.vue') },
-      { path: 'waybill', name: '运单管理', component: () => import('../views/dispatch/Waybill.vue') }
+      { path: 'waybill', name: '运单管理', component: () => import('../views/dispatch/Waybill.vue') },
+      { path: 'loading-sheet/:id', name: '装车单', component: () => import('../views/dispatch/LoadingSheet.vue') }
     ]
   },
   {
@@ -55,6 +56,7 @@ export const menus = [
       { path: 'events', name: '轨迹事件', component: () => import('../views/tracking/Events.vue') },
       { path: 'alerts', name: '围栏告警', component: () => import('../views/tracking/Alerts.vue') }
       ,{ path: 'exceptions', name: '异常理赔', component: () => import('../views/tracking/Exceptions.vue') }
+      ,{ path: 'sla', name: '超时预警', component: () => import('../views/tracking/Sla.vue') }
     ]
   },
   {
