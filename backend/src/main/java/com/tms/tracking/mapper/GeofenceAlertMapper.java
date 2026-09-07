@@ -1,0 +1,1 @@
+package com.tms.tracking.mapper; import com.baomidou.mybatisplus.core.mapper.BaseMapper; import com.tms.tracking.entity.GeofenceAlert; public interface GeofenceAlertMapper extends BaseMapper<GeofenceAlert> {}

@@ -1,0 +1,10 @@
+package com.tms.billing.controller;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper; import com.baomidou.mybatisplus.extension.plugins.pagination.Page; import com.tms.billing.entity.FreightBill; import com.tms.billing.mapper.FreightBillMapper; import com.tms.billing.service.BillingService; import com.tms.common.R; import com.tms.order.entity.TransportOrder; import com.tms.order.mapper.TransportOrderMapper; import com.tms.order.service.VolumeService; import lombok.Data; import lombok.RequiredArgsConstructor; import org.springframework.web.bind.annotation.*; import java.math.BigDecimal;
+@RestController @RequestMapping("/api/billing") @RequiredArgsConstructor
+public class BillingController {
+ private final FreightBillMapper mapper; private final TransportOrderMapper orderMapper; private final BillingService service;
+ @GetMapping("/page") public R<Page<FreightBill>> page(@RequestParam(defaultValue="1")long current,@RequestParam(defaultValue="20")long size,@RequestParam(required=false)String status){QueryWrapper<FreightBill>q=new QueryWrapper<>();if(status!=null)q.eq("status",status);q.orderByDesc("id");return R.ok(mapper.selectPage(new Page<>(current,size),q));}
+ @PostMapping("/calc") public R<BillingService.CalcResult> calc(@RequestBody CalcReq req){TransportOrder o=req.orderId==null?new TransportOrder():orderMapper.selectById(req.orderId);if(o==null)throw new com.tms.common.BizException("订单不存在");if(req.lines!=null){o.setLines(req.lines);o.setVolumeRatio(req.volumeRatio);}return R.ok(service.calc(req.carrierCode,req.chargeType,o,req.distanceKm));}
+ @PostMapping("/{id}/pay") public R<FreightBill> pay(@PathVariable Long id){FreightBill b=mapper.selectById(id);if(b==null)throw new com.tms.common.BizException("计费单不存在");b.setStatus("PAID");mapper.updateById(b);return R.ok(b);}
+ @Data public static class CalcReq{private String carrierCode,chargeType;private Long orderId;private java.util.List<com.tms.order.entity.TransportOrderLine> lines;private BigDecimal volumeRatio,distanceKm;}
+}

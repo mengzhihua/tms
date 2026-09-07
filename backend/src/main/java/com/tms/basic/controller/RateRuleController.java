@@ -1,0 +1,2 @@
+package com.tms.basic.controller; import com.tms.common.BaseCrudController; import com.tms.basic.entity.RateRule; import com.tms.basic.mapper.RateRuleMapper; import org.springframework.web.bind.annotation.RequestMapping; import org.springframework.web.bind.annotation.RestController;
+@RestController @RequestMapping("/api/basic/rate-rule") public class RateRuleController extends BaseCrudController<RateRule,RateRuleMapper> { public RateRuleController(){super(RateRule.class);} protected String[] keywordColumns(){return new String[]{"code","name","carrier_code"};} }
