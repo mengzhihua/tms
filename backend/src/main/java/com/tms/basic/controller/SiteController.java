@@ -1,2 +1,19 @@
-package com.tms.basic.controller; import com.tms.common.BaseCrudController; import com.tms.basic.entity.Site; import com.tms.basic.mapper.SiteMapper; import org.springframework.web.bind.annotation.RequestMapping; import org.springframework.web.bind.annotation.RestController;
-@RestController @RequestMapping("/api/basic/site") public class SiteController extends BaseCrudController<Site,SiteMapper> { public SiteController(){super(Site.class);} protected String[] keywordColumns(){return new String[]{"code","name","city"};} }
+package com.tms.basic.controller;
+
+import com.tms.basic.entity.Site;
+import com.tms.basic.mapper.SiteMapper;
+import com.tms.common.BaseCrudController;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/basic/site")
+public class SiteController extends BaseCrudController<Site, SiteMapper> {
+    public SiteController() {
+        super(Site.class);
+    }
+
+    protected String[] keywordColumns() {
+        return new String[] {"code", "name", "city"};
+    }
+}

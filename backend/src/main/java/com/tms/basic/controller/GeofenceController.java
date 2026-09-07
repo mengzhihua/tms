@@ -1,2 +1,19 @@
-package com.tms.basic.controller; import com.tms.common.BaseCrudController; import com.tms.basic.entity.Geofence; import com.tms.basic.mapper.GeofenceMapper; import org.springframework.web.bind.annotation.RequestMapping; import org.springframework.web.bind.annotation.RestController;
-@RestController @RequestMapping("/api/basic/geofence") public class GeofenceController extends BaseCrudController<Geofence,GeofenceMapper> { public GeofenceController(){super(Geofence.class);} protected String[] keywordColumns(){return new String[]{"code","name","site_code"};} }
+package com.tms.basic.controller;
+
+import com.tms.basic.entity.Geofence;
+import com.tms.basic.mapper.GeofenceMapper;
+import com.tms.common.BaseCrudController;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/basic/geofence")
+public class GeofenceController extends BaseCrudController<Geofence, GeofenceMapper> {
+    public GeofenceController() {
+        super(Geofence.class);
+    }
+
+    protected String[] keywordColumns() {
+        return new String[] {"code", "name", "site_code"};
+    }
+}

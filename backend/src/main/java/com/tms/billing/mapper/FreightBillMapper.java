@@ -1,1 +1,6 @@
-package com.tms.billing.mapper; import com.baomidou.mybatisplus.core.mapper.BaseMapper; import com.tms.billing.entity.FreightBill; public interface FreightBillMapper extends BaseMapper<FreightBill> {}
+package com.tms.billing.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.tms.billing.entity.FreightBill;
+
+public interface FreightBillMapper extends BaseMapper<FreightBill> {}

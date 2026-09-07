@@ -1,11 +1,136 @@
 package com.tms.tracking.service;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper; import com.tms.basic.entity.Geofence; import com.tms.basic.mapper.GeofenceMapper; import com.tms.common.BizException; import com.tms.dispatch.entity.Waybill; import com.tms.tracking.entity.GeofenceAlert; import com.tms.tracking.entity.GeofenceState; import com.tms.tracking.entity.TrackingEvent; import com.tms.tracking.mapper.GeofenceAlertMapper; import com.tms.tracking.mapper.GeofenceStateMapper; import com.tms.tracking.mapper.TrackingEventMapper; import lombok.RequiredArgsConstructor; import org.springframework.stereotype.Service; import java.math.*; import java.time.LocalDateTime; import java.util.*;
-@Service @RequiredArgsConstructor
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.tms.basic.entity.Geofence;
+import com.tms.basic.mapper.GeofenceMapper;
+import com.tms.dispatch.entity.Waybill;
+import com.tms.tracking.entity.GeofenceAlert;
+import com.tms.tracking.entity.GeofenceState;
+import com.tms.tracking.entity.TrackingEvent;
+import com.tms.tracking.mapper.GeofenceAlertMapper;
+import com.tms.tracking.mapper.GeofenceStateMapper;
+import com.tms.tracking.mapper.TrackingEventMapper;
+import java.math.*;
+import java.time.LocalDateTime;
+import java.util.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
 public class GeofenceService {
- private final GeofenceMapper fenceMapper; private final GeofenceStateMapper stateMapper; private final GeofenceAlertMapper alertMapper; private final TrackingEventMapper eventMapper;
- public static boolean contains(Geofence f,BigDecimal lng,BigDecimal lat){if(f==null||lng==null||lat==null)return false;if("CIRCLE".equalsIgnoreCase(f.getType()))return haversine(f.getCenterLat(),f.getCenterLng(),lat,lng)<=nz(f.getRadiusM()).doubleValue();List<double[]> p=polygon(f.getPolygon());boolean inside=false;for(int i=0,j=p.size()-1;i<p.size();j=i++){double xi=p.get(i)[0],yi=p.get(i)[1],xj=p.get(j)[0],yj=p.get(j)[1];boolean cross=(yi>lat.doubleValue())!=(yj>lat.doubleValue());if(cross&&lng.doubleValue()<(xj-xi)*(lat.doubleValue()-yi)/(yj-yi)+xi)inside=!inside;}return inside;}
- public static double haversine(BigDecimal lat1,BigDecimal lon1,BigDecimal lat2,BigDecimal lon2){double r=6371000,dLat=Math.toRadians(lat2.doubleValue()-lat1.doubleValue()),dLon=Math.toRadians(lon2.doubleValue()-lon1.doubleValue());double a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(Math.toRadians(lat1.doubleValue()))*Math.cos(Math.toRadians(lat2.doubleValue()))*Math.sin(dLon/2)*Math.sin(dLon/2);return 2*r*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
- public List<GeofenceAlert> onPosition(Waybill w,BigDecimal lng,BigDecimal lat){List<GeofenceAlert> out=new ArrayList<>();for(Geofence f:fenceMapper.selectList(new LambdaQueryWrapper<Geofence>().eq(Geofence::getStatus,"ENABLED"))){boolean now=contains(f,lng,lat);GeofenceState s=stateMapper.selectOne(new LambdaQueryWrapper<GeofenceState>().eq(GeofenceState::getWaybillId,w.getId()).eq(GeofenceState::getGeofenceCode,f.getCode()));if(s==null){s=new GeofenceState();s.setWaybillId(w.getId());s.setGeofenceCode(f.getCode());s.setInside(now);stateMapper.insert(s);continue;}boolean old=Boolean.TRUE.equals(s.getInside());if(old!=now){s.setInside(now);stateMapper.updateById(s);String type=now?"ENTER":"EXIT";if((now&&Boolean.TRUE.equals(f.getAlertOnEnter()))||(!now&&Boolean.TRUE.equals(f.getAlertOnExit()))){GeofenceAlert a=new GeofenceAlert();a.setWaybillId(w.getId());a.setWaybillCode(w.getCode());a.setVehiclePlate(w.getVehiclePlate());a.setGeofenceCode(f.getCode());a.setGeofenceName(f.getName());a.setAlertType(type);a.setLng(lng);a.setLat(lat);a.setAlertTime(LocalDateTime.now());a.setHandled(false);alertMapper.insert(a);TrackingEvent e=new TrackingEvent();e.setWaybillId(w.getId());e.setWaybillCode(w.getCode());e.setEventType("GEOFENCE_"+type);e.setLng(lng);e.setLat(lat);e.setDescription(f.getName()+" "+type);e.setEventTime(LocalDateTime.now());e.setSource("GPS");eventMapper.insert(e);out.add(a);}}}return out;}
- private static BigDecimal nz(BigDecimal v){return v==null?BigDecimal.ZERO:v;}
- private static List<double[]> polygon(String text){List<double[]> out=new ArrayList<>();if(text==null)return out;String x=text.replace("[","").replace("]","");String[] a=x.split(",");for(int i=0;i+1<a.length;i+=2)try{out.add(new double[]{Double.parseDouble(a[i].trim()),Double.parseDouble(a[i+1].trim())});}catch(Exception ignored){}return out;}
+    private final GeofenceMapper fenceMapper;
+    private final GeofenceStateMapper stateMapper;
+    private final GeofenceAlertMapper alertMapper;
+    private final TrackingEventMapper eventMapper;
+
+    public static boolean contains(Geofence f, BigDecimal lng, BigDecimal lat) {
+        if (f == null || lng == null || lat == null) {
+            return false;
+        }
+        if ("CIRCLE".equalsIgnoreCase(f.getType())) {
+            return haversine(f.getCenterLat(), f.getCenterLng(), lat, lng)
+                    <= nz(f.getRadiusM()).doubleValue();
+        }
+        List<double[]> p = polygon(f.getPolygon());
+        boolean inside = false;
+        for (int i = 0, j = p.size() - 1; i < p.size(); j = i++) {
+            double xi = p.get(i)[0], yi = p.get(i)[1], xj = p.get(j)[0], yj = p.get(j)[1];
+            boolean cross = (yi > lat.doubleValue()) != (yj > lat.doubleValue());
+            if (cross && lng.doubleValue() < (xj - xi) * (lat.doubleValue() - yi) / (yj - yi) + xi) {
+                inside = !inside;
+            }
+        }
+        return inside;
+    }
+
+    public static double haversine(
+            BigDecimal lat1, BigDecimal lon1, BigDecimal lat2, BigDecimal lon2) {
+        double r = 6371000,
+                dLat = Math.toRadians(lat2.doubleValue() - lat1.doubleValue()),
+                dLon = Math.toRadians(lon2.doubleValue() - lon1.doubleValue());
+        double a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                        + Math.cos(Math.toRadians(lat1.doubleValue()))
+                                * Math.cos(Math.toRadians(lat2.doubleValue()))
+                                * Math.sin(dLon / 2)
+                                * Math.sin(dLon / 2);
+        return 2 * r * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    public List<GeofenceAlert> onPosition(Waybill w, BigDecimal lng, BigDecimal lat) {
+        List<GeofenceAlert> out = new ArrayList<>();
+        for (Geofence f :
+                fenceMapper.selectList(
+                        new LambdaQueryWrapper<Geofence>().eq(Geofence::getStatus, "ENABLED"))) {
+            boolean now = contains(f, lng, lat);
+            GeofenceState s =
+                    stateMapper.selectOne(
+                            new LambdaQueryWrapper<GeofenceState>()
+                                    .eq(GeofenceState::getWaybillId, w.getId())
+                                    .eq(GeofenceState::getGeofenceCode, f.getCode()));
+            if (s == null) {
+                s = new GeofenceState();
+                s.setWaybillId(w.getId());
+                s.setGeofenceCode(f.getCode());
+                s.setInside(now);
+                stateMapper.insert(s);
+                continue;
+            }
+            boolean old = Boolean.TRUE.equals(s.getInside());
+            if (old != now) {
+                s.setInside(now);
+                stateMapper.updateById(s);
+                String type = now ? "ENTER" : "EXIT";
+                if ((now && Boolean.TRUE.equals(f.getAlertOnEnter()))
+                        || (!now && Boolean.TRUE.equals(f.getAlertOnExit()))) {
+                    GeofenceAlert a = new GeofenceAlert();
+                    a.setWaybillId(w.getId());
+                    a.setWaybillCode(w.getCode());
+                    a.setVehiclePlate(w.getVehiclePlate());
+                    a.setGeofenceCode(f.getCode());
+                    a.setGeofenceName(f.getName());
+                    a.setAlertType(type);
+                    a.setLng(lng);
+                    a.setLat(lat);
+                    a.setAlertTime(LocalDateTime.now());
+                    a.setHandled(false);
+                    alertMapper.insert(a);
+                    TrackingEvent e = new TrackingEvent();
+                    e.setWaybillId(w.getId());
+                    e.setWaybillCode(w.getCode());
+                    e.setEventType("GEOFENCE_" + type);
+                    e.setLng(lng);
+                    e.setLat(lat);
+                    e.setDescription(f.getName() + " " + type);
+                    e.setEventTime(LocalDateTime.now());
+                    e.setSource("GPS");
+                    eventMapper.insert(e);
+                    out.add(a);
+                }
+            }
+        }
+        return out;
+    }
+
+    private static BigDecimal nz(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
+    }
+
+    private static List<double[]> polygon(String text) {
+        List<double[]> out = new ArrayList<>();
+        if (text == null) {
+            return out;
+        }
+        String x = text.replace("[", "").replace("]", "");
+        String[] a = x.split(",");
+        for (int i = 0; i + 1 < a.length; i += 2) {
+            try {
+                out.add(
+                        new double[] {Double.parseDouble(a[i].trim()), Double.parseDouble(a[i + 1].trim())});
+            } catch (Exception ignored) {
+            }
+        }
+        return out;
+    }
 }

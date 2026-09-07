@@ -1,2 +1,19 @@
-package com.tms.basic.controller; import com.tms.common.BaseCrudController; import com.tms.basic.entity.Carrier; import com.tms.basic.mapper.CarrierMapper; import org.springframework.web.bind.annotation.RequestMapping; import org.springframework.web.bind.annotation.RestController;
-@RestController @RequestMapping("/api/basic/carrier") public class CarrierController extends BaseCrudController<Carrier,CarrierMapper> { public CarrierController(){super(Carrier.class);} protected String[] keywordColumns(){return new String[]{"code","name","contact"};} }
+package com.tms.basic.controller;
+
+import com.tms.basic.entity.Carrier;
+import com.tms.basic.mapper.CarrierMapper;
+import com.tms.common.BaseCrudController;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/basic/carrier")
+public class CarrierController extends BaseCrudController<Carrier, CarrierMapper> {
+    public CarrierController() {
+        super(Carrier.class);
+    }
+
+    protected String[] keywordColumns() {
+        return new String[] {"code", "name", "contact"};
+    }
+}

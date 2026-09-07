@@ -1,1 +1,6 @@
-package com.tms.tracking.mapper; import com.baomidou.mybatisplus.core.mapper.BaseMapper; import com.tms.tracking.entity.GeofenceState; public interface GeofenceStateMapper extends BaseMapper<GeofenceState> {}
+package com.tms.tracking.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.tms.tracking.entity.GeofenceState;
+
+public interface GeofenceStateMapper extends BaseMapper<GeofenceState> {}

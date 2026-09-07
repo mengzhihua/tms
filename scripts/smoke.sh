@@ -30,6 +30,8 @@ O3=$(call POST /order '{"customerCode":"CUS03","orderType":"DELIVERY","fromSiteC
 W3=$(call POST /waybill "{\"carrierCode\":\"SF\",\"fromSiteCode\":\"WH01\",\"orderIds\":[$I3]}"); W3ID=$(echo "$W3"|jq -r .id)
 W3=$(call POST "/waybill/$W3ID/dispatch"); TP=$(echo "$W3"|jq -r .thirdPartyNo); [[ "$TP" == SF* ]]
 call POST "/waybill/$W3ID/sync-track" >/dev/null
+TP_EVENTS=$(call GET "/tracking/events/page?waybillCode=$(echo "$W3"|jq -r .code)&size=100")
+test "$(echo "$TP_EVENTS" | jq '[.records[] | select(.eventType=="THIRD_PARTY")] | length')" -ge 1
 call POST "/thirdparty/callback/MOCK_SF" "{\"thirdPartyNo\":\"$TP\",\"status\":\"SIGNED\",\"description\":\"已签收\"}" >/dev/null
 test "$(call GET "/order/$I3"|jq -r .status)" = "DELIVERED"
 echo "== 7 dashboard"

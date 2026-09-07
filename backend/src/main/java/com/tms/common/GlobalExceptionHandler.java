@@ -9,9 +9,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(BizException.class)
-    public R<Void> biz(BizException e) { return R.fail(400, e.getMessage()); }
+    public R<Void> biz(BizException e) {
+        return R.fail(400, e.getMessage());
+    }
+
     @ExceptionHandler(DuplicateKeyException.class)
-    public R<Void> dup(DuplicateKeyException e) { return R.fail(400, "编码已存在，请勿重复"); }
+    public R<Void> dup(DuplicateKeyException e) {
+        return R.fail(400, "编码已存在，请勿重复");
+    }
+
     @ExceptionHandler(Exception.class)
-    public R<Void> other(Exception e) { log.error("Unhandled error", e); return R.fail(500, e.getMessage()); }
+    public R<Void> other(Exception e) {
+        log.error("Unhandled error", e);
+        return R.fail(500, e.getMessage());
+    }
 }
