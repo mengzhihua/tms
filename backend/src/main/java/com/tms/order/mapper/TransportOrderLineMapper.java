@@ -1,0 +1,6 @@
+package com.tms.order.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.tms.order.entity.TransportOrderLine;
+
+public interface TransportOrderLineMapper extends BaseMapper<TransportOrderLine> {}

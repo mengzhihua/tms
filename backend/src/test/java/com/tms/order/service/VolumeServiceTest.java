@@ -1,0 +1,38 @@
+package com.tms.order.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import com.tms.basic.entity.Vehicle;
+import com.tms.order.entity.TransportOrderLine;
+import java.math.BigDecimal;
+import java.util.Arrays;
+import org.junit.jupiter.api.Test;
+
+class VolumeServiceTest {
+    @Test
+    void volumeWeightAndChargeable() {
+        TransportOrderLine l = new TransportOrderLine();
+        l.setQty(new BigDecimal("2"));
+        l.setLengthCm(new BigDecimal("100"));
+        l.setWidthCm(new BigDecimal("50"));
+        l.setHeightCm(new BigDecimal("20"));
+        l.setWeightKg(new BigDecimal("3"));
+        VolumeService.VolumeResult r = VolumeService.calc(Arrays.asList(l), new BigDecimal("6000"));
+        assertEquals(new BigDecimal("0.200"), r.getTotalVolumeM3());
+        assertEquals(new BigDecimal("6.000"), r.getTotalWeightKg());
+        assertEquals(new BigDecimal("33.333"), r.getVolumetricWeightKg());
+        assertEquals(r.getVolumetricWeightKg(), r.getChargeableWeightKg());
+    }
+
+    @Test
+    void loadRate() {
+        Vehicle v = new Vehicle();
+        v.setMaxWeightKg(new BigDecimal("100"));
+        v.setMaxVolumeM3(new BigDecimal("10"));
+        VolumeService.LoadResult r =
+                VolumeService.checkLoad(v, new BigDecimal("50"), new BigDecimal("2.5"));
+        assertEquals(0, new BigDecimal("50.00").compareTo(r.getWeightRate()));
+        assertEquals(0, new BigDecimal("25.00").compareTo(r.getVolumeRate()));
+        assertTrue(r.isFits());
+    }
+}
