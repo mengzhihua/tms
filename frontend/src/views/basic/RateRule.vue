@@ -10,6 +10,8 @@ const columns = [
   { prop: 'code', label: '编码', required: true },
   { prop: 'name', label: '名称' },
   { prop: 'carrierCode', label: '承运商(空=通用)' },
+  { prop: 'regionCode', label: '区域(空=通用)' },
+  { prop: 'serviceLevelCode', label: '服务时效(空=通用)' },
   { prop: 'chargeType', label: '计费类型' },
   { prop: 'firstUnit', label: '首单位', type: 'number' },
   { prop: 'firstPrice', label: '首价', type: 'number' },

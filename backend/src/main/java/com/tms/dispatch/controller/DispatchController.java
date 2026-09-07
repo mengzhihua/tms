@@ -15,10 +15,15 @@ public class DispatchController {
     private final TransportOrderMapper mapper;
 
     @GetMapping("/pending-orders")
-    public R<List<TransportOrder>> pending(@RequestParam(required = false) String fromSiteCode) {
+    public R<List<TransportOrder>> pending(
+            @RequestParam(required = false) String fromSiteCode,
+            @RequestParam(required = false) String carrierCode) {
         QueryWrapper<TransportOrder> q = new QueryWrapper<TransportOrder>().eq("status", "CREATED");
         if (fromSiteCode != null && !fromSiteCode.isEmpty()) {
             q.eq("from_site_code", fromSiteCode);
+        }
+        if (carrierCode != null && !carrierCode.isEmpty()) {
+            q.and(w -> w.eq("carrier_code", carrierCode).or().isNull("carrier_code"));
         }
         q.orderByDesc("priority");
         return R.ok(mapper.selectList(q));

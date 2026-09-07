@@ -18,6 +18,11 @@ export const basic = {
   route: crud('/basic/route'),
   geofence: crud('/basic/geofence'),
   rateRule: crud('/basic/rate-rule')
+  ,region: crud('/basic/region')
+  ,serviceLevel: crud('/basic/service-level')
+  ,packageMaterial: crud('/basic/package-material')
+  ,carrierCoverage: crud('/basic/carrier-coverage')
+  ,selectionRule: crud('/basic/selection-rule')
 }
 
 export const order = {
@@ -26,6 +31,7 @@ export const order = {
   create: (data) => http.post('/order', data),
   update: (id, data) => http.put(`/order/${id}`, data),
   cancel: (id) => http.post(`/order/${id}/cancel`),
+  reverse: (id, data) => http.post(`/order/${id}/reverse`, data),
   volume: (data) => http.post('/order/volume/calc', data),
   loadCheck: (data) => http.post('/order/volume/load-check', data)
 }
@@ -41,6 +47,8 @@ export const waybill = {
   close: (id) => http.post(`/waybill/${id}/close`),
   cancel: (id) => http.post(`/waybill/${id}/cancel`),
   syncTrack: (id) => http.post(`/waybill/${id}/sync-track`)
+  ,load: (id, data) => http.post(`/waybill/${id}/load`, data)
+  ,loadingSheet: (id) => http.get(`/waybill/${id}/loading-sheet`)
 }
 
 export const dispatch = {
@@ -63,3 +71,48 @@ export const billing = {
 }
 
 export const dashboard = () => http.get('/dashboard')
+
+export const selection = {
+  recommend: (id) => http.get(`/selection/recommend/${id}`),
+  assign: (id, carrierCode) => http.post(`/selection/assign/${id}`, null, { params: { carrierCode } }),
+  autoAssign: (ids) => http.post('/selection/auto-assign', { ids })
+}
+
+export const exceptionApi = {
+  page: (params) => http.get('/exception/page', { params }),
+  create: (data) => http.post('/exception', data),
+  handle: (id, data) => http.post(`/exception/${id}/handle`, data),
+  claim: (id, data) => http.post(`/exception/${id}/claim`, data),
+  audit: (id, data) => http.post(`/exception/${id}/claim-audit`, data),
+  pay: (id) => http.post(`/exception/${id}/claim-pay`),
+  scan: () => http.post('/exception/scan'),
+  summary: () => http.get('/exception/summary')
+}
+
+export const pod = {
+  page: (params) => http.get('/pod/page', { params }),
+  summary: () => http.get('/pod/summary'),
+  return: (id, data) => http.post(`/pod/${id}/return`, data),
+  archive: (id) => http.post(`/pod/${id}/archive`),
+  lost: (id) => http.post(`/pod/${id}/lost`)
+}
+
+export const rating = {
+  compute: (period) => http.post('/rating/compute', null, { params: { period } }),
+  page: (params) => http.get('/rating/page', { params }),
+  rank: (period) => http.get('/rating/rank', { params: { period } })
+}
+
+export const report = {
+  sla: (params) => http.get('/report/sla', { params }),
+  slaFlow: (params) => http.get('/report/sla-flow', { params }),
+  transitSign: (params) => http.get('/report/transit-sign', { params }),
+  quality: (params) => http.get('/report/quality', { params }),
+  orderStructure: (params) => http.get('/report/order-structure', { params }),
+  alertSummary: (params) => http.get('/report/alert-summary', { params })
+}
+
+export const pushLog = {
+  page: (params) => http.get('/push-log/page', { params }),
+  retry: (id) => http.post(`/push-log/${id}/retry`)
+}

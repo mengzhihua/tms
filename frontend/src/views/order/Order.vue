@@ -5,11 +5,29 @@
         <el-input v-model="query.keyword" placeholder="订单号/来源单号/收货人" clearable />
         <el-button type="primary" @click="load">查询</el-button>
         <el-button type="success" @click="openForm()">新建订单</el-button>
+        <el-button
+          type="warning"
+          :disabled="selected.length === 0"
+          @click="autoAssign"
+        >
+          批量自动筛单
+        </el-button>
       </div>
-      <el-table v-loading="loading" :data="rows" border stripe size="small">
+      <el-table
+        v-loading="loading"
+        :data="rows"
+        border
+        stripe
+        size="small"
+        @selection-change="selected = $event"
+      >
+        <el-table-column type="selection" width="48" />
         <el-table-column prop="code" label="订单号" width="150" />
         <el-table-column prop="customerCode" label="客户" width="100" />
         <el-table-column prop="fromSiteCode" label="起点" width="90" />
+        <el-table-column prop="serviceLevelCode" label="时效等级" width="100" />
+        <el-table-column prop="regionCode" label="区域" width="90" />
+        <el-table-column prop="carrierCode" label="预分配承运商" width="130" />
         <el-table-column prop="consigneeName" label="收货人" width="110" />
         <el-table-column prop="totalQty" label="件数" width="80" />
         <el-table-column prop="chargeableWeightKg" label="计费重(kg)" width="110" />
@@ -19,9 +37,18 @@
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }"><StatusTag :value="row.status" /></template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openForm(row)">编辑</el-button>
+            <el-button link type="warning" @click="openRecommend(row)">智能筛单</el-button>
+            <el-button
+              v-if="row.status === 'DELIVERED'"
+              link
+              type="success"
+              @click="openReverse(row)"
+            >
+              生成退货单
+            </el-button>
             <el-button
               v-if="row.status === 'CREATED'"
               link
@@ -81,6 +108,24 @@
             <el-form-item label="起点站"><el-input v-model="form.fromSiteCode" /></el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="时效等级">
+              <el-select v-model="form.serviceLevelCode" clearable style="width: 100%">
+                <el-option
+                  v-for="item in serviceLevels"
+                  :key="item.code"
+                  :label="`${item.code} ${item.name || ''}`"
+                  :value="item.code"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="收货省"><el-input v-model="form.consigneeProvince" /></el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="收货市"><el-input v-model="form.consigneeCity" /></el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="收货人"><el-input v-model="form.consigneeName" /></el-form-item>
           </el-col>
           <el-col :span="12">
@@ -103,6 +148,23 @@
         <el-table :data="form.lines" border size="small">
           <el-table-column label="货品编码">
             <template #default="{ row }"><el-input v-model="row.itemCode" /></template>
+          </el-table-column>
+          <el-table-column label="包材" width="150">
+            <template #default="{ row }">
+              <el-select
+                v-model="row.packageCode"
+                clearable
+                style="width: 100%"
+                @change="packageChanged(row)"
+              >
+                <el-option
+                  v-for="item in packageMaterials"
+                  :key="item.code"
+                  :label="item.name || item.code"
+                  :value="item.code"
+                />
+              </el-select>
+            </template>
           </el-table-column>
           <el-table-column label="货品名称">
             <template #default="{ row }"><el-input v-model="row.itemName" /></template>
@@ -150,13 +212,42 @@
         <el-button type="primary" @click="save">保存</el-button>
       </template>
     </el-dialog>
+    <el-dialog v-model="recommendVisible" title="智能筛单" width="720px">
+      <el-table
+        :data="candidates"
+        border
+        :row-class-name="candidateClass"
+      >
+        <el-table-column prop="carrierCode" label="承运商" />
+        <el-table-column prop="carrierType" label="类型" />
+        <el-table-column prop="cost" label="预估运费" />
+        <el-table-column prop="hours" label="承诺时效(小时)" />
+        <el-table-column prop="reason" label="推荐理由" />
+        <el-table-column label="操作" width="90">
+          <template #default="{ row }">
+            <el-button v-if="row.recommended" type="primary" link @click="adopt(row)">采用</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+    <el-dialog v-model="reverseVisible" title="生成退货单" width="450px">
+      <el-form label-width="90px">
+        <el-form-item label="退货原因">
+          <el-input v-model="reverseReason" type="textarea" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reverseVisible = false">取消</el-button>
+        <el-button type="primary" @click="reverse">生成</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { basic, order } from '../../api'
+import { basic, order, selection } from '../../api'
 import StatusTag from '../../components/StatusTag.vue'
 import { fmt } from '../../utils'
 
@@ -166,6 +257,15 @@ const loading = ref(false)
 const visible = ref(false)
 const form = ref({})
 const customers = ref([])
+const serviceLevels = ref([])
+const packageMaterials = ref([])
+const selected = ref([])
+const recommendVisible = ref(false)
+const candidates = ref([])
+const recommendOrder = ref(null)
+const reverseVisible = ref(false)
+const reverseOrder = ref(null)
+const reverseReason = ref('')
 const query = reactive({ current: 1, size: 20, keyword: '' })
 
 const estimate = computed(() => {
@@ -201,6 +301,7 @@ function emptyForm() {
     orderType: 'DELIVERY',
     volumeRatio: 6000,
     priority: 0,
+    serviceLevelCode: '',
     lines: []
   }
 }
@@ -220,6 +321,18 @@ function lineVolumetricWeight(line) {
 
 function lineChargeableWeight(line) {
   return Math.max(lineVolumetricWeight(line), Number(line.weightKg || 0) * Number(line.qty || 0))
+}
+
+function packageChanged(line) {
+  const material = packageMaterials.value.find((item) => item.code === line.packageCode)
+  if (!material) {
+    return
+  }
+  line.lengthCm = material.lengthCm
+  line.widthCm = material.widthCm
+  line.heightCm = material.heightCm
+  line.tareWeightKg = material.tareWeightKg
+  line.volumeM3 = material.volumeM3
 }
 
 async function openForm(row) {
@@ -246,6 +359,43 @@ function addLine() {
   form.value.lines.push({ qty: 1, lengthCm: 0, widthCm: 0, heightCm: 0, weightKg: 0 })
 }
 
+async function openRecommend(row) {
+  recommendOrder.value = row
+  candidates.value = await selection.recommend(row.id)
+  recommendVisible.value = true
+}
+
+function candidateClass({ row }) {
+  return row.recommended ? 'recommended-row' : ''
+}
+
+async function adopt(candidate) {
+  await selection.assign(recommendOrder.value.id, candidate.carrierCode)
+  ElMessage.success('已采用推荐承运商')
+  recommendVisible.value = false
+  await load()
+}
+
+async function autoAssign() {
+  await selection.autoAssign(selected.value.map((item) => item.id))
+  ElMessage.success('批量自动筛单完成')
+  selected.value = []
+  await load()
+}
+
+function openReverse(row) {
+  reverseOrder.value = row
+  reverseReason.value = ''
+  reverseVisible.value = true
+}
+
+async function reverse() {
+  const result = await order.reverse(reverseOrder.value.id, { reason: reverseReason.value })
+  ElMessage.success(`退货单 ${result.code} 已生成`)
+  reverseVisible.value = false
+  await load()
+}
+
 async function save() {
   if (form.value.id) {
     await order.update(form.value.id, form.value)
@@ -264,7 +414,20 @@ async function cancel(row) {
 }
 
 onMounted(async () => {
-  customers.value = (await basic.customer.list({ size: 200 })) || []
+  const [customerRows, levelRows, materialRows] = await Promise.all([
+    basic.customer.list({ size: 200 }),
+    basic.serviceLevel.list({ size: 200 }),
+    basic.packageMaterial.list({ size: 200 })
+  ])
+  customers.value = customerRows || []
+  serviceLevels.value = levelRows || []
+  packageMaterials.value = materialRows || []
   await load()
 })
 </script>
+
+<style scoped>
+:deep(.recommended-row) {
+  --el-table-tr-bg-color: var(--el-color-success-light-9);
+}
+</style>
