@@ -36,6 +36,10 @@ mvn spring-boot:run
 默认使用 H2 文件数据库 `backend/data/tms`，H2 Console 为 `http://localhost:8080/h2`。
 MySQL 配置通过 `mysql` profile 启用。
 
+> 中文乱码：演示数据 `data.sql` 与接口响应均按 UTF-8 处理（`spring.sql.init.encoding`、`server.servlet.encoding`、`-Dfile.encoding=UTF-8`）。
+> 若之前已在 Windows/GBK 环境启动过并生成了乱码数据，请停止后端、删除 `backend/data` 目录后重新启动，演示数据会重新初始化。
+> 用 `java -jar` 直接运行时请加 `-Dfile.encoding=UTF-8`。
+
 ### 前端
 
 要求 Node.js 18+：
