@@ -17,7 +17,9 @@ public class DispatchController {
     @GetMapping("/pending-orders")
     public R<List<TransportOrder>> pending(@RequestParam(required = false) String fromSiteCode) {
         QueryWrapper<TransportOrder> q = new QueryWrapper<TransportOrder>().eq("status", "CREATED");
-        if (fromSiteCode != null && !fromSiteCode.isEmpty()) q.eq("from_site_code", fromSiteCode);
+        if (fromSiteCode != null && !fromSiteCode.isEmpty()) {
+            q.eq("from_site_code", fromSiteCode);
+        }
         q.orderByDesc("priority");
         return R.ok(mapper.selectList(q));
     }

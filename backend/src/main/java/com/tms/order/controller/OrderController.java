@@ -73,7 +73,9 @@ public class OrderController {
     @PostMapping("/volume/load-check")
     public R<VolumeService.LoadResult> loadCheck(@RequestBody LoadReq req) {
         Vehicle v = vehicleMapper.selectById(req.vehicleId);
-        if (v == null) throw new BizException("车辆不存在");
+        if (v == null) {
+            throw new BizException("车辆不存在");
+        }
         List<TransportOrder> os = mapper.selectBatchIds(req.orderIds);
         BigDecimal weight = BigDecimal.ZERO, volume = BigDecimal.ZERO;
         for (TransportOrder o : os) {

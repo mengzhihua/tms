@@ -1,7 +1,9 @@
 package com.tms.tracking.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.tms.basic.entity.Site;
 import com.tms.basic.entity.Vehicle;
+import com.tms.basic.mapper.SiteMapper;
 import com.tms.basic.mapper.VehicleMapper;
 import com.tms.common.BizException;
 import com.tms.dispatch.entity.Waybill;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TrackingService {
     private final VehicleMapper vehicleMapper;
+    private final SiteMapper siteMapper;
     private final WaybillMapper waybillMapper;
     private final TransportOrderMapper orderMapper;
     private final TrackingEventMapper eventMapper;
@@ -47,7 +50,9 @@ public class TrackingService {
             v.setLastGpsTime(r.eventTime == null ? LocalDateTime.now() : r.eventTime);
             vehicleMapper.updateById(v);
         }
-        if (w == null) return 0;
+        if (w == null) {
+            return 0;
+        }
         TrackingEvent e = new TrackingEvent();
         e.setWaybillId(w.getId());
         e.setWaybillCode(w.getCode());
@@ -64,19 +69,32 @@ public class TrackingService {
 
     public int simulate(Long waybillId, int steps) {
         Waybill w = waybillMapper.selectById(waybillId);
-        if (w == null) throw new BizException("运单不存在");
+        if (w == null) {
+            throw new BizException("运单不存在");
+        }
         Vehicle v =
                 vehicleMapper.selectOne(
                         new LambdaQueryWrapper<Vehicle>().eq(Vehicle::getPlateNo, w.getVehiclePlate()));
         List<TransportOrder> orders =
                 orderMapper.selectList(
                         new LambdaQueryWrapper<TransportOrder>().eq(TransportOrder::getWaybillId, waybillId));
-        if (v == null || orders.isEmpty()) return 0;
+        if (v == null || orders.isEmpty()) {
+            return 0;
+        }
         TransportOrder o = orders.get(0);
-        BigDecimal aLng = v.getLng() == null ? new BigDecimal("121.47") : v.getLng(),
-                aLat = v.getLat() == null ? new BigDecimal("31.23") : v.getLat(),
-                bLng = o.getConsigneeLng() == null ? aLng : o.getConsigneeLng(),
-                bLat = o.getConsigneeLat() == null ? aLat : o.getConsigneeLat();
+        Site site =
+                w.getFromSiteCode() == null
+                        ? null
+                        : siteMapper.selectOne(
+                                new LambdaQueryWrapper<Site>().eq(Site::getCode, w.getFromSiteCode()));
+        BigDecimal aLng = site == null ? null : site.getLng();
+        BigDecimal aLat = site == null ? null : site.getLat();
+        if (aLng == null || aLat == null) {
+            aLng = v.getLng() == null ? new BigDecimal("121.47") : v.getLng();
+            aLat = v.getLat() == null ? new BigDecimal("31.23") : v.getLat();
+        }
+        BigDecimal bLng = o.getConsigneeLng() == null ? aLng : o.getConsigneeLng();
+        BigDecimal bLat = o.getConsigneeLat() == null ? aLat : o.getConsigneeLat();
         int total = 0;
         for (int i = 0; i < Math.max(2, steps); i++) {
             BigDecimal f =
@@ -110,7 +128,9 @@ public class TrackingService {
 
     public void handle(Long id, HandleReq r) {
         GeofenceAlert a = alertMapper.selectById(id);
-        if (a == null) throw new BizException("告警不存在");
+        if (a == null) {
+            throw new BizException("告警不存在");
+        }
         a.setHandled(true);
         a.setHandler(r.handler);
         a.setHandleRemark(r.handleRemark);

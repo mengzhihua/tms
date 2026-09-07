@@ -27,7 +27,9 @@ public class ThirdPartyController {
         Waybill w =
                 waybillMapper.selectOne(
                         new LambdaQueryWrapper<Waybill>().eq(Waybill::getThirdPartyNo, r.thirdPartyNo));
-        if (w == null) throw new BizException("三方运单不存在");
+        if (w == null) {
+            throw new BizException("三方运单不存在");
+        }
         w.setThirdPartyStatus(r.status);
         TrackingEvent e = new TrackingEvent();
         e.setWaybillId(w.getId());

@@ -37,8 +37,12 @@ public class TrackingController {
             @RequestParam(required = false) String waybillCode,
             @RequestParam(required = false) String eventType) {
         QueryWrapper<TrackingEvent> q = new QueryWrapper<>();
-        if (waybillCode != null) q.eq("waybill_code", waybillCode);
-        if (eventType != null) q.eq("event_type", eventType);
+        if (waybillCode != null) {
+            q.eq("waybill_code", waybillCode);
+        }
+        if (eventType != null) {
+            q.eq("event_type", eventType);
+        }
         q.orderByDesc("event_time");
         return R.ok(eventMapper.selectPage(new Page<>(current, size), q));
     }
@@ -49,7 +53,9 @@ public class TrackingController {
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) Boolean handled) {
         QueryWrapper<GeofenceAlert> q = new QueryWrapper<>();
-        if (handled != null) q.eq("handled", handled);
+        if (handled != null) {
+            q.eq("handled", handled);
+        }
         q.orderByDesc("alert_time");
         return R.ok(alertMapper.selectPage(new Page<>(current, size), q));
     }

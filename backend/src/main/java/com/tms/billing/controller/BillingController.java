@@ -27,7 +27,9 @@ public class BillingController {
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String status) {
         QueryWrapper<FreightBill> q = new QueryWrapper<>();
-        if (status != null) q.eq("status", status);
+        if (status != null) {
+            q.eq("status", status);
+        }
         q.orderByDesc("id");
         return R.ok(mapper.selectPage(new Page<>(current, size), q));
     }
@@ -36,7 +38,9 @@ public class BillingController {
     public R<BillingService.CalcResult> calc(@RequestBody CalcReq req) {
         TransportOrder o =
                 req.orderId == null ? new TransportOrder() : orderMapper.selectById(req.orderId);
-        if (o == null) throw new com.tms.common.BizException("订单不存在");
+        if (o == null) {
+            throw new com.tms.common.BizException("订单不存在");
+        }
         if (req.lines != null) {
             o.setLines(req.lines);
             o.setVolumeRatio(req.volumeRatio);
@@ -47,7 +51,9 @@ public class BillingController {
     @PostMapping("/{id}/pay")
     public R<FreightBill> pay(@PathVariable Long id) {
         FreightBill b = mapper.selectById(id);
-        if (b == null) throw new com.tms.common.BizException("计费单不存在");
+        if (b == null) {
+            throw new com.tms.common.BizException("计费单不存在");
+        }
         b.setStatus("PAID");
         mapper.updateById(b);
         return R.ok(b);

@@ -19,6 +19,7 @@ W=$(call POST "/waybill/$WID/dispatch"); test "$(echo "$W"|jq -r .freightAmount)
 call POST "/waybill/$WID/depart" >/dev/null
 echo "== 5 simulate GPS and geofence"
 call POST "/tracking/simulate/$WID?steps=10" | tee /tmp/tms-sim.json
+test "$(jq -r '.' /tmp/tms-sim.json)" -gt 0
 AL=$(call GET "/tracking/alerts/page?handled=false&size=100"); test "$(echo "$AL"|jq '.records|length')" -gt 0
 call POST "/waybill/$WID/arrive" >/dev/null
 for OID in "$I1" "$I2"; do call POST "/waybill/$WID/sign" "{\"orderId\":$OID,\"signer\":\"张三\"}" >/dev/null; done

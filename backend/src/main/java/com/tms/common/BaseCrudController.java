@@ -85,7 +85,9 @@ public abstract class BaseCrudController<T extends BaseEntity, M extends BaseMap
         TableInfo info = TableInfoHelper.getTableInfo(entityClass);
         params.forEach(
                 (k, v) -> {
-                    if (RESERVED.contains(k) || StringUtils.isBlank(v)) return;
+                    if (RESERVED.contains(k) || StringUtils.isBlank(v)) {
+                        return;
+                    }
                     info.getFieldList().stream()
                             .filter(f -> f.getProperty().equals(k))
                             .findFirst()

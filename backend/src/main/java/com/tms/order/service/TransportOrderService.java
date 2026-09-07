@@ -26,8 +26,12 @@ public class TransportOrderService {
         o.setId(null);
         o.setCode(codeGenerator.next("TO"));
         o.setStatus("CREATED");
-        if (o.getVolumeRatio() == null) o.setVolumeRatio(new BigDecimal("6000"));
-        if (o.getPriority() == null) o.setPriority(5);
+        if (o.getVolumeRatio() == null) {
+            o.setVolumeRatio(new BigDecimal("6000"));
+        }
+        if (o.getPriority() == null) {
+            o.setPriority(5);
+        }
         orderMapper.insert(o);
         saveLines(o);
         return load(o.getId());
