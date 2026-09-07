@@ -9,6 +9,8 @@ import com.tms.basic.mapper.CarrierMapper;
 import com.tms.basic.mapper.DriverMapper;
 import com.tms.basic.mapper.RouteMapper;
 import com.tms.basic.mapper.VehicleMapper;
+import com.tms.basic.entity.ServiceLevel;
+import com.tms.basic.mapper.ServiceLevelMapper;
 import com.tms.billing.entity.FreightBill;
 import com.tms.billing.service.BillingService;
 import com.tms.common.BizException;
@@ -18,6 +20,10 @@ import com.tms.dispatch.mapper.WaybillMapper;
 import com.tms.order.entity.TransportOrder;
 import com.tms.order.mapper.TransportOrderMapper;
 import com.tms.order.service.VolumeService;
+import com.tms.pod.service.PodService;
+import com.tms.exc.entity.TransportException;
+import com.tms.exc.service.ExceptionService;
+import com.tms.openapi.RoutePushService;
 import com.tms.thirdparty.ThirdPartyLogisticsAdapter;
 import com.tms.thirdparty.ThirdPartyLogisticsGateway;
 import com.tms.tracking.entity.TrackingEvent;
@@ -44,6 +50,10 @@ public class DispatchService {
     private final VolumeService volumeService;
     private final BillingService billingService;
     private final ThirdPartyLogisticsGateway gateway;
+    private final ServiceLevelMapper serviceLevelMapper;
+    private final PodService podService;
+    private final ExceptionService exceptionService;
+    private final RoutePushService routePushService;
 
     @Transactional
     public Waybill create(CreateReq req) {
@@ -58,6 +68,9 @@ public class DispatchService {
             TransportOrder o = orderMapper.selectById(id);
             if (o == null || !"CREATED".equals(o.getStatus())) {
                 throw new BizException("订单必须为CREATED");
+            }
+            if (o.getCarrierCode() != null && !o.getCarrierCode().equals(req.carrierCode)) {
+                throw new BizException("订单 " + o.getCode() + " 已分配承运商 " + o.getCarrierCode());
             }
             orders.add(o);
         }
@@ -90,6 +103,10 @@ public class DispatchService {
         w.setDriverName(d == null ? null : d.getName());
         w.setRouteCode(req.routeCode);
         w.setFromSiteCode(req.fromSiteCode);
+        if (!orders.isEmpty()) {
+            w.setServiceLevelCode(orders.get(0).getServiceLevelCode());
+        }
+        w.setLoadStatus("NONE");
         w.setPlannedDepartTime(req.plannedDepartTime);
         w.setPlannedArriveTime(req.plannedArriveTime);
         w.setOrderCount(orders.size());
@@ -156,8 +173,21 @@ public class DispatchService {
         if (!"DISPATCHED".equals(w.getStatus())) {
             throw new BizException("仅DISPATCHED运单可发车");
         }
+        if ("SELF".equals(w.getCarrierType()) && !"LOADED".equals(w.getLoadStatus())) {
+            throw new BizException("自建运单必须先装车交接");
+        }
         w.setStatus("IN_TRANSIT");
         w.setActualDepartTime(LocalDateTime.now());
+        if (w.getServiceLevelCode() != null) {
+            ServiceLevel level =
+                    serviceLevelMapper.selectOne(
+                            new LambdaQueryWrapper<ServiceLevel>()
+                                    .eq(ServiceLevel::getCode, w.getServiceLevelCode()));
+            if (level != null && level.getPromisedHours() != null) {
+                w.setPromisedArriveTime(
+                        w.getActualDepartTime().plusMinutes(level.getPromisedHours().multiply(new BigDecimal("60")).longValue()));
+            }
+        }
         waybillMapper.updateById(w);
         if (w.getVehiclePlate() != null) {
             Vehicle v =
@@ -184,6 +214,9 @@ public class DispatchService {
         }
         w.setStatus("ARRIVED");
         w.setActualArriveTime(LocalDateTime.now());
+        if (w.getPromisedArriveTime() != null) {
+            w.setOnTime(!w.getActualArriveTime().isAfter(w.getPromisedArriveTime()));
+        }
         waybillMapper.updateById(w);
         event(w, null, "ARRIVED", null, null, "已到达");
         return load(id);
@@ -205,6 +238,25 @@ public class DispatchService {
         o.setPodRemark(req.remark);
         o.setStatus(Boolean.TRUE.equals(req.exception) ? "EXCEPTION" : "DELIVERED");
         orderMapper.updateById(o);
+        routePushService.push(
+                o.getCustomerCode(),
+                o.getCode(),
+                o.getStatus(),
+                Boolean.TRUE.equals(req.exception) ? "EXCEPTION" : "DELIVERED",
+                req.remark);
+        podService.create(w, o, req.podImage);
+        if (Boolean.TRUE.equals(req.exception)) {
+            TransportException exception = new TransportException();
+            exception.setWaybillId(w.getId());
+            exception.setWaybillCode(w.getCode());
+            exception.setOrderId(o.getId());
+            exception.setOrderCode(o.getCode());
+            exception.setCarrierCode(w.getCarrierCode());
+            exception.setType("REJECT");
+            exception.setLevel("MEDIUM");
+            exception.setDescription(req.remark);
+            exceptionService.create(exception);
+        }
         w.setExceptionFlag(
                 Boolean.TRUE.equals(req.exception)
                         || (w.getExceptionFlag() != null && w.getExceptionFlag()));
@@ -364,6 +416,63 @@ public class DispatchService {
         return load(id);
     }
 
+    @Transactional
+    public Waybill loadVehicle(Long id, LoadReq req) {
+        Waybill w = require(id);
+        if (!"DISPATCHED".equals(w.getStatus())) {
+            throw new BizException("仅DISPATCHED运单可装车");
+        }
+        Set<String> expected = new HashSet<>();
+        for (TransportOrder order : orders(w)) {
+            expected.add(order.getCode());
+        }
+        Set<String> actual = new HashSet<>(req.orderCodes == null ? Collections.emptyList() : req.orderCodes);
+        for (String code : expected) {
+            if (!actual.contains(code)) {
+                throw new BizException("订单 " + code + " 未装车");
+            }
+        }
+        for (String code : actual) {
+            if (!expected.contains(code)) {
+                throw new BizException("订单 " + code + " 不属于本运单");
+            }
+        }
+        w.setLoadStatus("LOADED");
+        w.setSealNo(req.sealNo);
+        w.setLoaderName(req.loaderName);
+        w.setLoadTime(LocalDateTime.now());
+        waybillMapper.updateById(w);
+        event(w, null, "LOADED", null, null, "装车交接完成");
+        return load(id);
+    }
+
+    public Map<String, Object> loadingSheet(Long id) {
+        Waybill w = load(id);
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        BigDecimal weight = BigDecimal.ZERO;
+        BigDecimal volume = BigDecimal.ZERO;
+        for (TransportOrder order : w.getOrders()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("code", order.getCode());
+            row.put("consignee", order.getConsigneeName());
+            row.put("qty", order.getTotalQty());
+            row.put("weight", order.getTotalWeightKg());
+            row.put("volume", order.getTotalVolumeM3());
+            rows.add(row);
+            weight = weight.add(order.getTotalWeightKg() == null ? BigDecimal.ZERO : order.getTotalWeightKg());
+            volume = volume.add(order.getTotalVolumeM3() == null ? BigDecimal.ZERO : order.getTotalVolumeM3());
+        }
+        result.put("waybill", w);
+        result.put("orders", rows);
+        Map<String, BigDecimal> totals = new LinkedHashMap<>();
+        totals.put("weight", weight);
+        totals.put("volume", volume);
+        result.put("totals", totals);
+        result.put("sealNo", w.getSealNo());
+        return result;
+    }
+
     public Waybill load(Long id) {
         Waybill w = require(id);
         w.setOrders(orders(w));
@@ -431,5 +540,12 @@ public class DispatchService {
         private String signer, podImage, remark;
         private LocalDateTime signTime;
         private Boolean exception;
+    }
+
+    @Data
+    public static class LoadReq {
+        private String sealNo;
+        private String loaderName;
+        private List<String> orderCodes;
     }
 }

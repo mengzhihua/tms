@@ -283,3 +283,179 @@ CREATE TABLE IF NOT EXISTS tms_freight_bill (
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
+
+ALTER TABLE tms_customer ADD COLUMN IF NOT EXISTS api_key VARCHAR(128);
+ALTER TABLE tms_customer ADD COLUMN IF NOT EXISTS callback_url VARCHAR(255);
+ALTER TABLE tms_customer ADD COLUMN IF NOT EXISTS push_enabled BOOLEAN;
+ALTER TABLE tms_rate_rule ADD COLUMN IF NOT EXISTS region_code VARCHAR(32);
+ALTER TABLE tms_rate_rule ADD COLUMN IF NOT EXISTS service_level_code VARCHAR(32);
+ALTER TABLE tms_transport_order ADD COLUMN IF NOT EXISTS service_level_code VARCHAR(32);
+ALTER TABLE tms_transport_order ADD COLUMN IF NOT EXISTS region_code VARCHAR(32);
+ALTER TABLE tms_transport_order ADD COLUMN IF NOT EXISTS carrier_code VARCHAR(32);
+ALTER TABLE tms_transport_order ADD COLUMN IF NOT EXISTS recommend_remark VARCHAR(255);
+ALTER TABLE tms_transport_order ADD COLUMN IF NOT EXISTS origin_order_code VARCHAR(32);
+ALTER TABLE tms_transport_order ADD COLUMN IF NOT EXISTS consignee_province VARCHAR(64);
+ALTER TABLE tms_transport_order ADD COLUMN IF NOT EXISTS consignee_city VARCHAR(64);
+ALTER TABLE tms_transport_order ADD COLUMN IF NOT EXISTS promised_arrive_time TIMESTAMP;
+ALTER TABLE tms_transport_order_line ADD COLUMN IF NOT EXISTS package_code VARCHAR(32);
+ALTER TABLE tms_waybill ADD COLUMN IF NOT EXISTS service_level_code VARCHAR(32);
+ALTER TABLE tms_waybill ADD COLUMN IF NOT EXISTS promised_arrive_time TIMESTAMP;
+ALTER TABLE tms_waybill ADD COLUMN IF NOT EXISTS load_status VARCHAR(16);
+ALTER TABLE tms_waybill ADD COLUMN IF NOT EXISTS seal_no VARCHAR(64);
+ALTER TABLE tms_waybill ADD COLUMN IF NOT EXISTS loader_name VARCHAR(64);
+ALTER TABLE tms_waybill ADD COLUMN IF NOT EXISTS load_time TIMESTAMP;
+ALTER TABLE tms_waybill ADD COLUMN IF NOT EXISTS on_time BOOLEAN;
+
+CREATE TABLE IF NOT EXISTS tms_region (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(32) NOT NULL UNIQUE,
+    name VARCHAR(128),
+    level VARCHAR(16),
+    provinces VARCHAR(255),
+    cities VARCHAR(255),
+    status VARCHAR(16),
+    remark VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tms_service_level (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(32) NOT NULL UNIQUE,
+    name VARCHAR(128),
+    promised_hours DECIMAL(18,3),
+    priority INT,
+    status VARCHAR(16),
+    remark VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tms_package_material (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(32) NOT NULL UNIQUE,
+    name VARCHAR(128),
+    length_cm DECIMAL(18,3),
+    width_cm DECIMAL(18,3),
+    height_cm DECIMAL(18,3),
+    tare_weight_kg DECIMAL(18,3),
+    volume_m3 DECIMAL(18,6),
+    status VARCHAR(16),
+    remark VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tms_carrier_coverage (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    carrier_code VARCHAR(32),
+    region_code VARCHAR(32),
+    service_level_code VARCHAR(32),
+    promised_hours DECIMAL(18,3),
+    status VARCHAR(16),
+    remark VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tms_selection_rule (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(32) NOT NULL UNIQUE,
+    name VARCHAR(128),
+    strategy VARCHAR(16),
+    region_code VARCHAR(32),
+    customer_code VARCHAR(32),
+    service_level_code VARCHAR(32),
+    designated_carrier VARCHAR(32),
+    priority INT,
+    status VARCHAR(16),
+    remark VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tms_transport_exception (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(32) NOT NULL UNIQUE,
+    waybill_id BIGINT,
+    waybill_code VARCHAR(32),
+    order_id BIGINT,
+    order_code VARCHAR(32),
+    carrier_code VARCHAR(32),
+    type VARCHAR(32),
+    level VARCHAR(16),
+    source VARCHAR(16),
+    description VARCHAR(255),
+    status VARCHAR(16),
+    handler VARCHAR(64),
+    handle_remark VARCHAR(255),
+    handle_time TIMESTAMP,
+    claim_flag BOOLEAN,
+    claim_amount DECIMAL(18,3),
+    claim_status VARCHAR(16),
+    claim_remark VARCHAR(255),
+    remark VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tms_pod_receipt (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(32) NOT NULL UNIQUE,
+    waybill_id BIGINT,
+    waybill_code VARCHAR(32),
+    order_id BIGINT,
+    order_code VARCHAR(32),
+    carrier_code VARCHAR(32),
+    receipt_type VARCHAR(16),
+    status VARCHAR(16),
+    signer VARCHAR(64),
+    sign_time TIMESTAMP,
+    image_url VARCHAR(255),
+    returned_time TIMESTAMP,
+    archived_time TIMESTAMP,
+    remark VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tms_carrier_rating (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    carrier_code VARCHAR(32),
+    carrier_name VARCHAR(128),
+    period VARCHAR(16),
+    waybill_count INT,
+    closed_count INT,
+    on_time_count INT,
+    on_time_rate DECIMAL(18,3),
+    exception_count INT,
+    exception_rate DECIMAL(18,3),
+    pod_return_rate DECIMAL(18,3),
+    avg_transit_hours DECIMAL(18,3),
+    claim_amount DECIMAL(18,3),
+    score DECIMAL(18,3),
+    grade VARCHAR(2),
+    computed_at TIMESTAMP,
+    remark VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    CONSTRAINT uk_tms_carrier_rating UNIQUE(carrier_code, period)
+);
+
+CREATE TABLE IF NOT EXISTS tms_push_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    customer_code VARCHAR(32),
+    order_code VARCHAR(32),
+    event_type VARCHAR(32),
+    url VARCHAR(255),
+    payload CLOB,
+    response_code INT,
+    response_body CLOB,
+    success BOOLEAN,
+    retry_count INT,
+    next_retry_time TIMESTAMP,
+    status VARCHAR(16),
+    remark VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);

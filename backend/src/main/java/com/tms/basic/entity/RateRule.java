@@ -11,6 +11,7 @@ import lombok.EqualsAndHashCode;
 @TableName("tms_rate_rule")
 public class RateRule extends BaseEntity {
     private String code, name, carrierCode, chargeType, status;
+    private String regionCode, serviceLevelCode;
     private BigDecimal firstUnit, firstPrice, addUnit, addPrice, minCharge, volumeRatio;
     private Integer priority;
 }

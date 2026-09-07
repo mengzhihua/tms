@@ -65,6 +65,11 @@ public class OrderController {
         return R.ok();
     }
 
+    @PostMapping("/{id}/reverse")
+    public R<TransportOrder> reverse(@PathVariable Long id, @RequestBody ReverseReq req) {
+        return R.ok(service.reverse(id, req.reason));
+    }
+
     @PostMapping("/volume/calc")
     public R<VolumeService.VolumeResult> calc(@RequestBody CalcReq req) {
         return R.ok(VolumeService.calc(req.lines, req.volumeRatio));
@@ -95,5 +100,10 @@ public class OrderController {
     public static class LoadReq {
         private Long vehicleId;
         private List<Long> orderIds;
+    }
+
+    @Data
+    public static class ReverseReq {
+        private String reason;
     }
 }

@@ -12,4 +12,7 @@ import lombok.EqualsAndHashCode;
 public class Customer extends BaseEntity {
     private String code, name, contact, phone, province, city, address;
     private BigDecimal lng, lat;
+    private String apiKey;
+    private String callbackUrl;
+    private Boolean pushEnabled;
 }

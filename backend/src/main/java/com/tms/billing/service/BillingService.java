@@ -24,6 +24,16 @@ public class BillingService {
 
     public CalcResult calc(
             String carrierCode, String chargeType, TransportOrder order, BigDecimal distanceKm) {
+        return calc(carrierCode, chargeType, order, distanceKm, null, null);
+    }
+
+    public CalcResult calc(
+            String carrierCode,
+            String chargeType,
+            TransportOrder order,
+            BigDecimal distanceKm,
+            String regionCode,
+            String serviceLevelCode) {
         String type = chargeType;
         List<RateRule> all =
                 ruleMapper.selectList(
@@ -38,10 +48,11 @@ public class BillingService {
         RateRule chosen = null;
         for (RateRule r : all) {
             if (type == null || type.equals(r.getChargeType())) {
-                if (chosen == null || Objects.equals(r.getCarrierCode(), carrierCode)) {
+                int score = specificity(r, carrierCode, regionCode, serviceLevelCode);
+                int current = chosen == null ? -1 : specificity(chosen, carrierCode, regionCode, serviceLevelCode);
+                if (chosen == null || score > current || (score == current && r.getPriority() < chosen.getPriority())) {
                     chosen = r;
                 }
-                if (Objects.equals(r.getCarrierCode(), carrierCode)) break;
             }
         }
         if (chosen == null) {
@@ -67,6 +78,29 @@ public class BillingService {
         r.amount = amount;
         r.calcDetail = detail(chosen, quantity, extra);
         return r;
+    }
+
+    private int specificity(
+            RateRule rule, String carrierCode, String regionCode, String serviceLevelCode) {
+        if (!Objects.equals(rule.getCarrierCode(), carrierCode)
+                && rule.getCarrierCode() != null) {
+            return -1;
+        }
+        if (rule.getRegionCode() != null && !Objects.equals(rule.getRegionCode(), regionCode)) {
+            return -1;
+        }
+        if (rule.getServiceLevelCode() != null
+                && !Objects.equals(rule.getServiceLevelCode(), serviceLevelCode)) {
+            return -1;
+        }
+        int score = rule.getCarrierCode() == null ? 0 : 1;
+        if (rule.getRegionCode() != null) {
+            score++;
+        }
+        if (rule.getServiceLevelCode() != null) {
+            score++;
+        }
+        return score;
     }
 
     public BigDecimal createBill(com.tms.dispatch.entity.Waybill w, TransportOrder o) {
