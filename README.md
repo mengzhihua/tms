@@ -110,3 +110,19 @@ SIGNED 回调会复用运单到达和逐单签收流程。
 
 体积测算按 `长(cm) × 宽(cm) × 高(cm) / 1,000,000` 计算立方米。
 体积重为 `总体积 × 1,000,000 / 抛比`，计费重取实际重量和体积重的较大值。
+
+## 二期能力矩阵
+
+| 金库 TMS 能力 | 本系统模块 | 主要接口 |
+| --- | --- | --- |
+| 区域与服务时效 | 基础数据、区域匹配、承运商覆盖 | `/api/basic/region`、`/api/basic/service-level` |
+| 智能筛单与承运商推荐 | selection | `/api/selection/recommend/{orderId}`、`/api/selection/auto-assign` |
+| SLA 超时与异常理赔 | exc、SLA 定时扫描 | `/api/exception/page`、`/api/exception/scan` |
+| 装车交接与装车单 | dispatch | `/api/waybill/{id}/load`、`/api/waybill/{id}/loading-sheet` |
+| 逆向订单与电子回单 | order、pod | `/api/order/{id}/reverse`、`/api/pod/page` |
+| 承运商服务评级 | rating | `/api/rating/compute`、`/api/rating/rank` |
+| 客户开放接口与回调 | openapi | `/open/orders`、`/open/orders/{code}/track` |
+| SLA、质量、订单结构分析 | report | `/api/report/sla`、`/api/report/quality` |
+
+开放接口使用 `X-Api-Key` 认证。演示客户 `CUS01` 的密钥为
+`demo-key-001`，回调地址指向本地模拟接收器。

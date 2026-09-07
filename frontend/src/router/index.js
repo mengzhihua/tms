@@ -21,6 +21,11 @@ export const menus = [
       { path: 'route', name: '线路', component: () => import('../views/basic/Route.vue') },
       { path: 'geofence', name: '电子围栏', component: () => import('../views/basic/Geofence.vue') },
       { path: 'rate-rule', name: '计费规则', component: () => import('../views/basic/RateRule.vue') }
+      ,{ path: 'region', name: '区域', component: () => import('../views/basic/Region.vue') }
+      ,{ path: 'service-level', name: '服务时效', component: () => import('../views/basic/ServiceLevel.vue') }
+      ,{ path: 'package-material', name: '包材', component: () => import('../views/basic/PackageMaterial.vue') }
+      ,{ path: 'carrier-coverage', name: '承运商覆盖', component: () => import('../views/basic/CarrierCoverage.vue') }
+      ,{ path: 'selection-rule', name: '筛单策略', component: () => import('../views/basic/SelectionRule.vue') }
     ]
   },
   {
@@ -49,6 +54,7 @@ export const menus = [
       { path: 'monitor', name: '车辆监控', component: () => import('../views/tracking/Monitor.vue') },
       { path: 'events', name: '轨迹事件', component: () => import('../views/tracking/Events.vue') },
       { path: 'alerts', name: '围栏告警', component: () => import('../views/tracking/Alerts.vue') }
+      ,{ path: 'exceptions', name: '异常理赔', component: () => import('../views/tracking/Exceptions.vue') }
     ]
   },
   {
@@ -59,6 +65,22 @@ export const menus = [
       { path: 'calc', name: '运费试算', component: () => import('../views/billing/Calc.vue') },
       { path: 'bill', name: '计费单', component: () => import('../views/billing/Bill.vue') }
     ]
+  }
+  ,{
+    path: '/pod', name: '回单管理', icon: 'Tickets',
+    component: () => import('../views/Pod.vue')
+  }
+  ,{
+    path: '/rating', name: '承运商评级', icon: 'Star',
+    component: () => import('../views/Rating.vue')
+  }
+  ,{
+    path: '/analysis', name: '数据分析', icon: 'DataAnalysis',
+    component: () => import('../views/Analysis.vue')
+  }
+  ,{
+    path: '/open-api', name: '开放接口', icon: 'Connection',
+    component: () => import('../views/OpenApi.vue')
   }
 ]
 
