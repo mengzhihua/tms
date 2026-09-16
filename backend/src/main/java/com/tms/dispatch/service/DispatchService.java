@@ -383,6 +383,56 @@ public class DispatchService {
         return w;
     }
 
+    public Waybill requireByCode(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            throw new BizException("运单号必填");
+        }
+        Waybill w = waybillMapper.selectOne(
+                new LambdaQueryWrapper<Waybill>().eq(Waybill::getCode, code.trim()));
+        if (w == null) {
+            throw new BizException("运单不存在: " + code);
+        }
+        return w;
+    }
+
+    @Transactional
+    public Waybill dispatchByCode(String code) {
+        return dispatch(requireByCode(code).getId());
+    }
+
+    @Transactional
+    public Waybill syncTrackByCode(String code) {
+        Waybill w = requireByCode(code);
+        if (w.getThirdPartyNo() == null) {
+            event(w, null, "IR_SYNC", null, null, "IR控制塔同步轨迹");
+            return load(w.getId());
+        }
+        return syncTrack(w.getId());
+    }
+
+    @Transactional
+    public Waybill switchCarrierByCode(String code, String carrierCode) {
+        if (carrierCode == null || carrierCode.trim().isEmpty()) {
+            throw new BizException("承运商编码必填");
+        }
+        Waybill w = requireByCode(code);
+        if ("DELIVERED".equals(w.getStatus())
+                || "CLOSED".equals(w.getStatus())
+                || "CANCELLED".equals(w.getStatus())) {
+            throw new BizException("当前状态不可换承运商: " + w.getStatus());
+        }
+        Carrier c = carrierMapper.selectOne(
+                new LambdaQueryWrapper<Carrier>().eq(Carrier::getCode, carrierCode.trim()));
+        if (c == null) {
+            throw new BizException("承运商不存在: " + carrierCode);
+        }
+        w.setCarrierCode(c.getCode());
+        w.setCarrierType(c.getType());
+        waybillMapper.updateById(w);
+        event(w, null, "SWITCH_CARRIER", null, null, "IR 换承运商 " + carrierCode.trim());
+        return load(w.getId());
+    }
+
     public List<TransportOrder> orders(Waybill w) {
         return orderMapper.selectList(
                 new LambdaQueryWrapper<TransportOrder>().eq(TransportOrder::getWaybillId, w.getId()));
