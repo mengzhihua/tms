@@ -1,4 +1,4 @@
-package com.tms.integration;
+package com.tms.integration.controller;
 
 import com.tms.billing.entity.FreightBill;
 import com.tms.billing.mapper.FreightBillMapper;

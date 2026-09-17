@@ -1,4 +1,4 @@
-package com.tms.integration;
+package com.tms.integration.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

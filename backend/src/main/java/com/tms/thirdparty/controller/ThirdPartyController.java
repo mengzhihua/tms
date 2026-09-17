@@ -1,4 +1,4 @@
-package com.tms.thirdparty;
+package com.tms.thirdparty.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tms.common.BizException;
