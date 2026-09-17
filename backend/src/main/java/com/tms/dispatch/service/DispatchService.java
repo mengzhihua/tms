@@ -12,6 +12,7 @@ import com.tms.basic.mapper.VehicleMapper;
 import com.tms.billing.entity.FreightBill;
 import com.tms.billing.service.BillingService;
 import com.tms.common.BizException;
+import com.tms.common.CarrierRates;
 import com.tms.common.CodeGenerator;
 import com.tms.dispatch.entity.Waybill;
 import com.tms.dispatch.mapper.WaybillMapper;
@@ -426,9 +427,20 @@ public class DispatchService {
         if (c == null) {
             throw new BizException("承运商不存在: " + carrierCode);
         }
+        String fromCarrier = w.getCarrierCode();
+        BigDecimal fromFreight = w.getFreightAmount();
+        BigDecimal toFreight = CarrierRates.scaledFreight(fromCarrier, c.getCode(), fromFreight);
         w.setCarrierCode(c.getCode());
         w.setCarrierType(c.getType());
+        if (toFreight != null) {
+            w.setFreightAmount(toFreight);
+        }
         waybillMapper.updateById(w);
+        for (FreightBill bill : billingService.bills(w.getId())) {
+            bill.setCarrierCode(c.getCode());
+            bill.setAmount(CarrierRates.scaledFreight(fromCarrier, c.getCode(), bill.getAmount()));
+            billingService.updateBill(bill);
+        }
         event(w, null, "SWITCH_CARRIER", null, null, "IR 换承运商 " + carrierCode.trim());
         return load(w.getId());
     }
