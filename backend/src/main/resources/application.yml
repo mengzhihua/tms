@@ -33,3 +33,6 @@ mybatis-plus:
 logging:
   level:
     com.tms: info
+tms:
+  open:
+    api-key: ${TMS_OPEN_API_KEY:tms-open-key}
