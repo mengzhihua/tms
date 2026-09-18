@@ -398,17 +398,44 @@ public class DispatchService {
 
     @Transactional
     public Waybill dispatchByCode(String code) {
-        return dispatch(requireByCode(code).getId());
+        Waybill w = requireByCode(code);
+        if ("CREATED".equals(w.getStatus())) {
+            return dispatch(w.getId());
+        }
+        if ("DISPATCHED".equals(w.getStatus())
+                || "IN_TRANSIT".equals(w.getStatus())
+                || "ARRIVED".equals(w.getStatus())) {
+            return load(w.getId());
+        }
+        throw new BizException("当前状态不可调度: " + w.getStatus());
     }
 
     @Transactional
     public Waybill syncTrackByCode(String code) {
         Waybill w = requireByCode(code);
-        if (w.getThirdPartyNo() == null) {
-            event(w, null, "IR_SYNC", null, null, "IR控制塔同步轨迹");
-            return load(w.getId());
+        if (w.getThirdPartyNo() != null && !w.getThirdPartyNo().trim().isEmpty()) {
+            return syncTrack(w.getId());
         }
-        return syncTrack(w.getId());
+        applyIrTrack(w);
+        event(w, null, "IR_SYNC", null, null, "IR控制塔同步轨迹");
+        return load(w.getId());
+    }
+
+    private void applyIrTrack(Waybill w) {
+        if ("DELIVERED".equals(w.getStatus())
+                || "CLOSED".equals(w.getStatus())
+                || "CANCELLED".equals(w.getStatus())) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        w.setExceptionFlag(false);
+        if (!"IN_TRANSIT".equals(w.getStatus()) && !"ARRIVED".equals(w.getStatus())) {
+            w.setStatus("IN_TRANSIT");
+        }
+        if (w.getPlannedArriveTime() == null || !w.getPlannedArriveTime().isAfter(now)) {
+            w.setPlannedArriveTime(now.plusHours(6));
+        }
+        waybillMapper.updateById(w);
     }
 
     @Transactional

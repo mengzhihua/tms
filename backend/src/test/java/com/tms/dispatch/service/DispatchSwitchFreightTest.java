@@ -1,6 +1,9 @@
 package com.tms.dispatch.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +23,7 @@ import com.tms.order.service.VolumeService;
 import com.tms.thirdparty.ThirdPartyLogisticsGateway;
 import com.tms.tracking.mapper.TrackingEventMapper;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
@@ -79,5 +83,68 @@ class DispatchSwitchFreightTest {
         verify(billingService).updateBill(billCaptor.capture());
         assertEquals("SELF01", billCaptor.getValue().getCarrierCode());
         assertEquals(0, new BigDecimal("70.00").compareTo(billCaptor.getValue().getAmount()));
+    }
+
+    @Test
+    void syncTrackWithoutThirdPartyClearsExceptionAndRefreshesEta() {
+        WaybillMapper waybillMapper = Mockito.mock(WaybillMapper.class);
+        TrackingEventMapper eventMapper = Mockito.mock(TrackingEventMapper.class);
+        DispatchService dispatch = new DispatchService(
+                waybillMapper,
+                Mockito.mock(TransportOrderMapper.class),
+                Mockito.mock(VehicleMapper.class),
+                Mockito.mock(DriverMapper.class),
+                Mockito.mock(CarrierMapper.class),
+                Mockito.mock(RouteMapper.class),
+                eventMapper,
+                Mockito.mock(CodeGenerator.class),
+                Mockito.mock(VolumeService.class),
+                Mockito.mock(BillingService.class),
+                Mockito.mock(ThirdPartyLogisticsGateway.class));
+
+        Waybill waybill = new Waybill();
+        waybill.setId(2L);
+        waybill.setCode("WB-EX");
+        waybill.setStatus("DISPATCHED");
+        waybill.setExceptionFlag(true);
+        waybill.setPlannedArriveTime(LocalDateTime.now().minusHours(8));
+        when(waybillMapper.selectOne(any())).thenReturn(waybill);
+        when(waybillMapper.selectById(2L)).thenReturn(waybill);
+        when(eventMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        Waybill updated = dispatch.syncTrackByCode("WB-EX");
+        assertEquals("IN_TRANSIT", updated.getStatus());
+        assertFalse(Boolean.TRUE.equals(updated.getExceptionFlag()));
+        assertNotNull(updated.getPlannedArriveTime());
+        assertTrue(updated.getPlannedArriveTime().isAfter(LocalDateTime.now()));
+        verify(waybillMapper).updateById(waybill);
+        verify(eventMapper).insert(any());
+    }
+
+    @Test
+    void dispatchByCodeIsIdempotentForInTransit() {
+        WaybillMapper waybillMapper = Mockito.mock(WaybillMapper.class);
+        DispatchService dispatch = new DispatchService(
+                waybillMapper,
+                Mockito.mock(TransportOrderMapper.class),
+                Mockito.mock(VehicleMapper.class),
+                Mockito.mock(DriverMapper.class),
+                Mockito.mock(CarrierMapper.class),
+                Mockito.mock(RouteMapper.class),
+                Mockito.mock(TrackingEventMapper.class),
+                Mockito.mock(CodeGenerator.class),
+                Mockito.mock(VolumeService.class),
+                Mockito.mock(BillingService.class),
+                Mockito.mock(ThirdPartyLogisticsGateway.class));
+
+        Waybill waybill = new Waybill();
+        waybill.setId(3L);
+        waybill.setCode("WB-LIVE");
+        waybill.setStatus("IN_TRANSIT");
+        when(waybillMapper.selectOne(any())).thenReturn(waybill);
+        when(waybillMapper.selectById(3L)).thenReturn(waybill);
+
+        Waybill updated = dispatch.dispatchByCode("WB-LIVE");
+        assertEquals("IN_TRANSIT", updated.getStatus());
     }
 }
