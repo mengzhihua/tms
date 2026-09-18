@@ -126,6 +126,11 @@ public class DispatchService {
     @Transactional
     public Waybill dispatch(Long id) {
         Waybill w = require(id);
+        if ("DISPATCHED".equals(w.getStatus())
+                || "IN_TRANSIT".equals(w.getStatus())
+                || "ARRIVED".equals(w.getStatus())) {
+            return load(id);
+        }
         if (!"CREATED".equals(w.getStatus())) {
             throw new BizException("仅CREATED运单可dispatch");
         }
@@ -422,20 +427,30 @@ public class DispatchService {
     }
 
     private void applyIrTrack(Waybill w) {
-        if ("DELIVERED".equals(w.getStatus())
-                || "CLOSED".equals(w.getStatus())
-                || "CANCELLED".equals(w.getStatus())) {
+        if (terminalStatus(w.getStatus())) {
             return;
+        }
+        Long id = w.getId();
+        if ("CREATED".equals(w.getStatus())) {
+            dispatch(id);
+            depart(id);
+            w = require(id);
+        } else if ("DISPATCHED".equals(w.getStatus())) {
+            depart(id);
+            w = require(id);
         }
         LocalDateTime now = LocalDateTime.now();
         w.setExceptionFlag(false);
-        if (!"IN_TRANSIT".equals(w.getStatus()) && !"ARRIVED".equals(w.getStatus())) {
-            w.setStatus("IN_TRANSIT");
-        }
         if (w.getPlannedArriveTime() == null || !w.getPlannedArriveTime().isAfter(now)) {
             w.setPlannedArriveTime(now.plusHours(6));
         }
         waybillMapper.updateById(w);
+    }
+
+    private boolean terminalStatus(String status) {
+        return "DELIVERED".equals(status)
+                || "CLOSED".equals(status)
+                || "CANCELLED".equals(status);
     }
 
     @Transactional
