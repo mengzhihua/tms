@@ -18,6 +18,7 @@ import com.tms.billing.service.BillingService;
 import com.tms.common.CodeGenerator;
 import com.tms.dispatch.entity.Waybill;
 import com.tms.dispatch.mapper.WaybillMapper;
+import com.tms.order.entity.TransportOrder;
 import com.tms.order.mapper.TransportOrderMapper;
 import com.tms.order.service.VolumeService;
 import com.tms.thirdparty.ThirdPartyLogisticsGateway;
@@ -115,10 +116,55 @@ class DispatchSwitchFreightTest {
         Waybill updated = dispatch.syncTrackByCode("WB-EX");
         assertEquals("IN_TRANSIT", updated.getStatus());
         assertFalse(Boolean.TRUE.equals(updated.getExceptionFlag()));
+        assertNotNull(updated.getActualDepartTime());
         assertNotNull(updated.getPlannedArriveTime());
         assertTrue(updated.getPlannedArriveTime().isAfter(LocalDateTime.now()));
-        verify(waybillMapper).updateById(waybill);
-        verify(eventMapper).insert(any());
+        verify(waybillMapper, Mockito.atLeastOnce()).updateById(waybill);
+        verify(eventMapper, Mockito.atLeastOnce()).insert(any());
+    }
+
+    @Test
+    void syncTrackFromCreatedRunsDispatchAndDepart() {
+        WaybillMapper waybillMapper = Mockito.mock(WaybillMapper.class);
+        TransportOrderMapper orderMapper = Mockito.mock(TransportOrderMapper.class);
+        BillingService billingService = Mockito.mock(BillingService.class);
+        TrackingEventMapper eventMapper = Mockito.mock(TrackingEventMapper.class);
+        DispatchService dispatch = new DispatchService(
+                waybillMapper,
+                orderMapper,
+                Mockito.mock(VehicleMapper.class),
+                Mockito.mock(DriverMapper.class),
+                Mockito.mock(CarrierMapper.class),
+                Mockito.mock(RouteMapper.class),
+                eventMapper,
+                Mockito.mock(CodeGenerator.class),
+                Mockito.mock(VolumeService.class),
+                billingService,
+                Mockito.mock(ThirdPartyLogisticsGateway.class));
+
+        Waybill waybill = new Waybill();
+        waybill.setId(4L);
+        waybill.setCode("WB-NEW");
+        waybill.setCarrierCode("SELF01");
+        waybill.setCarrierType("SELF");
+        waybill.setStatus("CREATED");
+        waybill.setExceptionFlag(true);
+        TransportOrder order = new TransportOrder();
+        order.setId(41L);
+        order.setCode("TO-NEW");
+        order.setStatus("DISPATCHED");
+        when(waybillMapper.selectOne(any())).thenReturn(waybill);
+        when(waybillMapper.selectById(4L)).thenReturn(waybill);
+        when(orderMapper.selectList(any())).thenReturn(Collections.singletonList(order));
+        when(billingService.createBill(any(), any(), any())).thenReturn(new BigDecimal("18"));
+        when(eventMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        Waybill updated = dispatch.syncTrackByCode("WB-NEW");
+        assertEquals("IN_TRANSIT", updated.getStatus());
+        assertNotNull(updated.getActualDepartTime());
+        assertEquals(0, new BigDecimal("18").compareTo(updated.getFreightAmount()));
+        assertEquals("IN_TRANSIT", order.getStatus());
+        verify(billingService).createBill(any(), any(), any());
     }
 
     @Test
