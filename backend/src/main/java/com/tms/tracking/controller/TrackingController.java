@@ -1,6 +1,7 @@
 package com.tms.tracking.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tms.common.R;
 import com.tms.tracking.entity.*;
@@ -37,10 +38,10 @@ public class TrackingController {
             @RequestParam(required = false) String waybillCode,
             @RequestParam(required = false) String eventType) {
         QueryWrapper<TrackingEvent> q = new QueryWrapper<>();
-        if (waybillCode != null) {
+        if (StringUtils.isNotBlank(waybillCode)) {
             q.eq("waybill_code", waybillCode);
         }
-        if (eventType != null) {
+        if (StringUtils.isNotBlank(eventType)) {
             q.eq("event_type", eventType);
         }
         q.orderByDesc("event_time");

@@ -148,9 +148,16 @@ public class TransportOrderService {
     }
 
     private void enrich(TransportOrder o) {
+        o.setRegionCode(blankToNull(o.getRegionCode()));
+        o.setServiceLevelCode(blankToNull(o.getServiceLevelCode()));
+        o.setCarrierCode(blankToNull(o.getCarrierCode()));
         if (o.getRegionCode() == null) {
             o.setRegionCode(regionService.match(o.getConsigneeProvince(), o.getConsigneeCity()));
         }
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.trim().isEmpty() ? null : s;
     }
 
     private void fillPackage(TransportOrderLine line) {
