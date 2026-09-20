@@ -33,3 +33,17 @@ INSERT INTO tms_transport_order(code,source_no,customer_code,order_type,from_sit
 SELECT 'TO-IR-DELAY','IR-SO-STUCK','CUS03','DELIVERY','WH01','IR延误客户','上海客户地址',121.47,31.23,1,6,.2,33.333,33.333,6000,'IN_TRANSIT',10,
 (SELECT id FROM tms_waybill WHERE code='WB-IR-DELAY'),'WB-IR-DELAY'
 WHERE NOT EXISTS(SELECT 1 FROM tms_transport_order WHERE code='TO-IR-DELAY');
+INSERT INTO tms_waybill(code,carrier_code,carrier_type,from_site_code,planned_depart_time,planned_arrive_time,order_count,total_weight_kg,total_volume_m3,freight_amount,status,exception_flag,created_at,updated_at)
+SELECT 'WB-IR-CREATED','SF','THIRD_PARTY','WH01',TIMESTAMPADD(HOUR,1,CURRENT_TIMESTAMP),TIMESTAMPADD(HOUR,8,CURRENT_TIMESTAMP),1,4,.1,0,'CREATED',FALSE,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS(SELECT 1 FROM tms_waybill WHERE code='WB-IR-CREATED');
+INSERT INTO tms_transport_order(code,source_no,customer_code,order_type,from_site_code,consignee_name,consignee_address,consignee_lng,consignee_lat,total_qty,total_weight_kg,total_volume_m3,volumetric_weight_kg,chargeable_weight_kg,volume_ratio,status,priority,waybill_id,waybill_code)
+SELECT 'TO-IR-CREATED','IR-SO-CREATED','CUS03','DELIVERY','WH01','IR待调度客户','上海客户地址',121.47,31.23,1,4,.1,16.667,16.667,6000,'DISPATCHED',8,
+(SELECT id FROM tms_waybill WHERE code='WB-IR-CREATED'),'WB-IR-CREATED'
+WHERE NOT EXISTS(SELECT 1 FROM tms_transport_order WHERE code='TO-IR-CREATED');
+INSERT INTO tms_waybill(code,carrier_code,carrier_type,from_site_code,planned_depart_time,planned_arrive_time,order_count,total_weight_kg,total_volume_m3,freight_amount,status,exception_flag,created_at,updated_at)
+SELECT 'WB-IR-EXC','SF','THIRD_PARTY','WH01',TIMESTAMPADD(HOUR,-8,CURRENT_TIMESTAMP),TIMESTAMPADD(HOUR,-1,CURRENT_TIMESTAMP),1,3,.1,22,'IN_TRANSIT',TRUE,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS(SELECT 1 FROM tms_waybill WHERE code='WB-IR-EXC');
+INSERT INTO tms_transport_order(code,source_no,customer_code,order_type,from_site_code,consignee_name,consignee_address,consignee_lng,consignee_lat,total_qty,total_weight_kg,total_volume_m3,volumetric_weight_kg,chargeable_weight_kg,volume_ratio,status,priority,waybill_id,waybill_code)
+SELECT 'TO-IR-EXC','IR-SO-EXC','CUS03','DELIVERY','WH01','IR异常客户','上海客户地址',121.47,31.23,1,3,.1,16.667,16.667,6000,'IN_TRANSIT',9,
+(SELECT id FROM tms_waybill WHERE code='WB-IR-EXC'),'WB-IR-EXC'
+WHERE NOT EXISTS(SELECT 1 FROM tms_transport_order WHERE code='TO-IR-EXC');

@@ -390,11 +390,7 @@ public class DispatchService {
     }
 
     public Waybill requireByCode(String code) {
-        if (code == null || code.trim().isEmpty()) {
-            throw new BizException("运单号必填");
-        }
-        Waybill w = waybillMapper.selectOne(
-                new LambdaQueryWrapper<Waybill>().eq(Waybill::getCode, code.trim()));
+        Waybill w = findWaybill(code);
         if (w == null) {
             throw new BizException("运单不存在: " + code);
         }
@@ -403,7 +399,29 @@ public class DispatchService {
 
     @Transactional
     public Waybill dispatchByCode(String code) {
-        Waybill w = requireByCode(code);
+        return dispatchByCode(code, null);
+    }
+
+    @Transactional
+    public Waybill dispatchByCode(String code, String carrierCode) {
+        Waybill w = findWaybill(code);
+        if (w == null) {
+            TransportOrder order = findOrder(code);
+            if (order != null && notBlank(order.getWaybillCode())) {
+                w = findWaybill(order.getWaybillCode());
+            } else if (order != null && "CREATED".equals(order.getStatus())) {
+                CreateReq req = new CreateReq();
+                req.setCarrierCode(notBlank(carrierCode) ? carrierCode.trim() : "SF");
+                req.setOrderIds(Collections.singletonList(order.getId()));
+                req.setFromSiteCode(order.getFromSiteCode());
+                req.setPlannedDepartTime(LocalDateTime.now());
+                req.setPlannedArriveTime(LocalDateTime.now().plusHours(6));
+                w = create(req);
+            }
+        }
+        if (w == null) {
+            throw new BizException("运单不存在: " + code);
+        }
         if ("CREATED".equals(w.getStatus())) {
             return dispatch(w.getId());
         }
@@ -413,6 +431,33 @@ public class DispatchService {
             return load(w.getId());
         }
         throw new BizException("当前状态不可调度: " + w.getStatus());
+    }
+
+    private Waybill findWaybill(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            throw new BizException("运单号必填");
+        }
+        return waybillMapper.selectOne(
+                new LambdaQueryWrapper<Waybill>().eq(Waybill::getCode, code.trim()));
+    }
+
+    private TransportOrder findOrder(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            return null;
+        }
+        String value = code.trim();
+        TransportOrder order = orderMapper.selectOne(
+                new LambdaQueryWrapper<TransportOrder>().eq(TransportOrder::getCode, value));
+        if (order != null) {
+            return order;
+        }
+        return orderMapper.selectOne(
+                new LambdaQueryWrapper<TransportOrder>().eq(TransportOrder::getSourceNo, value)
+                        .last("LIMIT 1"));
+    }
+
+    private static boolean notBlank(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     @Transactional

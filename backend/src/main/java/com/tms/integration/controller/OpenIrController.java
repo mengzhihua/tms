@@ -141,7 +141,7 @@ public class OpenIrController {
         checkKey(key);
         String type = req.getType() == null ? "" : req.getType();
         if ("TMS_DISPATCH".equals(type)) {
-            return R.ok(dispatchService.dispatchByCode(code(req)));
+            return R.ok(dispatchService.dispatchByCode(code(req), carrier(req)));
         }
         if ("TMS_SYNC_TRACK".equals(type)) {
             return R.ok(dispatchService.syncTrackByCode(code(req)));
