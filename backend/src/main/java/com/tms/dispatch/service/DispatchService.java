@@ -12,6 +12,7 @@ import com.tms.basic.mapper.VehicleMapper;
 import com.tms.billing.entity.FreightBill;
 import com.tms.billing.service.BillingService;
 import com.tms.common.BizException;
+import com.tms.common.CarrierRates;
 import com.tms.common.CodeGenerator;
 import com.tms.dispatch.entity.Waybill;
 import com.tms.dispatch.mapper.WaybillMapper;
@@ -125,6 +126,11 @@ public class DispatchService {
     @Transactional
     public Waybill dispatch(Long id) {
         Waybill w = require(id);
+        if ("DISPATCHED".equals(w.getStatus())
+                || "IN_TRANSIT".equals(w.getStatus())
+                || "ARRIVED".equals(w.getStatus())) {
+            return load(id);
+        }
         if (!"CREATED".equals(w.getStatus())) {
             throw new BizException("仅CREATED运单可dispatch");
         }
@@ -397,17 +403,54 @@ public class DispatchService {
 
     @Transactional
     public Waybill dispatchByCode(String code) {
-        return dispatch(requireByCode(code).getId());
+        Waybill w = requireByCode(code);
+        if ("CREATED".equals(w.getStatus())) {
+            return dispatch(w.getId());
+        }
+        if ("DISPATCHED".equals(w.getStatus())
+                || "IN_TRANSIT".equals(w.getStatus())
+                || "ARRIVED".equals(w.getStatus())) {
+            return load(w.getId());
+        }
+        throw new BizException("当前状态不可调度: " + w.getStatus());
     }
 
     @Transactional
     public Waybill syncTrackByCode(String code) {
         Waybill w = requireByCode(code);
-        if (w.getThirdPartyNo() == null) {
-            event(w, null, "IR_SYNC", null, null, "IR控制塔同步轨迹");
-            return load(w.getId());
+        if (w.getThirdPartyNo() != null && !w.getThirdPartyNo().trim().isEmpty()) {
+            return syncTrack(w.getId());
         }
-        return syncTrack(w.getId());
+        applyIrTrack(w);
+        event(w, null, "IR_SYNC", null, null, "IR控制塔同步轨迹");
+        return load(w.getId());
+    }
+
+    private void applyIrTrack(Waybill w) {
+        if (terminalStatus(w.getStatus())) {
+            return;
+        }
+        Long id = w.getId();
+        if ("CREATED".equals(w.getStatus())) {
+            dispatch(id);
+            depart(id);
+            w = require(id);
+        } else if ("DISPATCHED".equals(w.getStatus())) {
+            depart(id);
+            w = require(id);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        w.setExceptionFlag(false);
+        if (w.getPlannedArriveTime() == null || !w.getPlannedArriveTime().isAfter(now)) {
+            w.setPlannedArriveTime(now.plusHours(6));
+        }
+        waybillMapper.updateById(w);
+    }
+
+    private boolean terminalStatus(String status) {
+        return "DELIVERED".equals(status)
+                || "CLOSED".equals(status)
+                || "CANCELLED".equals(status);
     }
 
     @Transactional
@@ -426,9 +469,20 @@ public class DispatchService {
         if (c == null) {
             throw new BizException("承运商不存在: " + carrierCode);
         }
+        String fromCarrier = w.getCarrierCode();
+        BigDecimal fromFreight = w.getFreightAmount();
+        BigDecimal toFreight = CarrierRates.scaledFreight(fromCarrier, c.getCode(), fromFreight);
         w.setCarrierCode(c.getCode());
         w.setCarrierType(c.getType());
+        if (toFreight != null) {
+            w.setFreightAmount(toFreight);
+        }
         waybillMapper.updateById(w);
+        for (FreightBill bill : billingService.bills(w.getId())) {
+            bill.setCarrierCode(c.getCode());
+            bill.setAmount(CarrierRates.scaledFreight(fromCarrier, c.getCode(), bill.getAmount()));
+            billingService.updateBill(bill);
+        }
         event(w, null, "SWITCH_CARRIER", null, null, "IR 换承运商 " + carrierCode.trim());
         return load(w.getId());
     }
