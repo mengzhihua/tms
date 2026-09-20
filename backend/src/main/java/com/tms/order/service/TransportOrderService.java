@@ -1,6 +1,7 @@
 package com.tms.order.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.tms.common.BizException;
 import com.tms.common.CodeGenerator;
 import com.tms.basic.entity.PackageMaterial;
@@ -61,6 +62,13 @@ public class TransportOrderService {
         input.setWaybillId(db.getWaybillId());
         input.setWaybillCode(db.getWaybillCode());
         orderMapper.updateById(input);
+        orderMapper.update(
+                null,
+                new LambdaUpdateWrapper<TransportOrder>()
+                        .eq(TransportOrder::getId, id)
+                        .set(TransportOrder::getServiceLevelCode, input.getServiceLevelCode())
+                        .set(TransportOrder::getRegionCode, input.getRegionCode())
+                        .set(TransportOrder::getCarrierCode, input.getCarrierCode()));
         lineMapper.delete(
                 new LambdaQueryWrapper<TransportOrderLine>().eq(TransportOrderLine::getOrderId, id));
         saveLines(input);
