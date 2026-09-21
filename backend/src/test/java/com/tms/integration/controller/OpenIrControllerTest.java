@@ -88,10 +88,19 @@ public class OpenIrControllerTest {
         mockMvc.perform(post("/api/open/ir/actions")
                         .header("X-Api-Key", "test-open-key")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"TMS_DISPATCH\",\"targetKey\":\"WB-IR-CREATED\"}"))
+                        .content("{\"type\":\"TMS_DISPATCH\",\"targetKey\":\"WB-IR-CREATED\","
+                                + "\"idempotencyKey\":\"TMS-DISPATCH-1\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.code").value("WB-IR-CREATED"))
+                .andExpect(jsonPath("$.data.status").value("DISPATCHED"));
+        mockMvc.perform(post("/api/open/ir/actions")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"TMS_DISPATCH\",\"targetKey\":\"WB-IR-CREATED\","
+                                + "\"idempotencyKey\":\"TMS-DISPATCH-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.status").value("DISPATCHED"));
     }
 
