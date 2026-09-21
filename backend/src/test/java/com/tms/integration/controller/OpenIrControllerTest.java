@@ -62,6 +62,7 @@ public class OpenIrControllerTest {
                 .andReturn().getResponse().getContentAsString();
         JsonNode exception = null;
         JsonNode created = null;
+        JsonNode openOrder = null;
         for (JsonNode row : objectMapper.readTree(snapshots).get("data").get("waybills")) {
             if ("WB-IR-EXC".equals(row.path("waybillCode").asText())
                     || "WB-IR-EXC".equals(row.path("code").asText())) {
@@ -71,12 +72,18 @@ public class OpenIrControllerTest {
                     || "WB-IR-CREATED".equals(row.path("code").asText())) {
                 created = row;
             }
+            if ("TO-DEMO02".equals(row.path("waybillCode").asText())
+                    || "TO-DEMO02".equals(row.path("code").asText())) {
+                openOrder = row;
+            }
         }
         assertNotNull(exception, "应包含 IR 异常运单");
         org.junit.jupiter.api.Assertions.assertTrue(
                 exception.path("exceptionFlag").asBoolean(),
                 "WB-IR-EXC 应为异常运单");
         assertNotNull(created, "应包含 IR 待调度运单");
+        assertNotNull(openOrder, "应包含未调度运输单 TO-DEMO02");
+        org.junit.jupiter.api.Assertions.assertEquals("CREATED", openOrder.path("status").asText());
 
         mockMvc.perform(post("/api/open/ir/actions")
                         .header("X-Api-Key", "test-open-key")

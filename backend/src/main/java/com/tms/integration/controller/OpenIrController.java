@@ -64,6 +64,7 @@ public class OpenIrController {
                 sourceByCode.put(order.getWaybillCode(), order.getSourceNo());
             }
         }
+        java.util.Set<String> waybillCodes = new java.util.HashSet<String>();
         List<Map<String, Object>> waybills = new ArrayList<Map<String, Object>>();
         for (Waybill waybill : waybillMapper.selectList(null)) {
             Map<String, Object> row = new LinkedHashMap<String, Object>();
@@ -89,6 +90,38 @@ public class OpenIrController {
             row.put("amount", waybill.getFreightAmount());
             row.put("exceptionFlag", waybill.getExceptionFlag());
             waybills.add(row);
+            if (waybill.getCode() != null) {
+                waybillCodes.add(waybill.getCode());
+            }
+        }
+        for (TransportOrder order : transportOrderMapper.selectList(null)) {
+            if (!"CREATED".equals(order.getStatus()) || order.getCode() == null) {
+                continue;
+            }
+            if (waybillCodes.contains(order.getCode())
+                    || (order.getWaybillCode() != null && waybillCodes.contains(order.getWaybillCode()))) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<String, Object>();
+            row.put("waybillCode", order.getCode());
+            row.put("waybillNo", order.getCode());
+            row.put("code", order.getCode());
+            row.put("sourceNo", order.getSourceNo());
+            row.put("sourceOrderNo", order.getSourceNo());
+            row.put("carrierCode", null);
+            row.put("carrier", null);
+            row.put("status", "CREATED");
+            row.put("fromSiteCode", order.getFromSiteCode());
+            row.put("fromSite", order.getFromSiteCode());
+            row.put("plannedArriveTime", order.getRequiredDeliveryTime());
+            row.put("planArriveTime", order.getRequiredDeliveryTime());
+            row.put("actualArriveTime", null);
+            row.put("arriveTime", null);
+            row.put("freightAmount", null);
+            row.put("amount", null);
+            row.put("exceptionFlag", Boolean.FALSE);
+            waybills.add(row);
+            waybillCodes.add(order.getCode());
         }
         List<Map<String, Object>> bills = new ArrayList<Map<String, Object>>();
         for (FreightBill bill : freightBillMapper.selectList(null)) {
