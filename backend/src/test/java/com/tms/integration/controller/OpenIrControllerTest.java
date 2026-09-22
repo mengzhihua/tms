@@ -44,6 +44,17 @@ public class OpenIrControllerTest {
         }
         assertNotNull(delayed, "应包含 IR 延误运单");
         org.junit.jupiter.api.Assertions.assertEquals("IR-SO-STUCK", delayed.path("sourceNo").asText());
+        JsonNode delayBill = null;
+        for (JsonNode row : objectMapper.readTree(snapshots).get("data").get("bills")) {
+            if ("WB-IR-DELAY".equals(row.path("orderNo").asText())
+                    || "TO-IR-DELAY".equals(row.path("orderNo").asText())
+                    || "IR-SO-STUCK".equals(row.path("sourceNo").asText())
+                    || "TO-IR-DELAY".equals(row.path("sourceNo").asText())) {
+                delayBill = row;
+                break;
+            }
+        }
+        assertNotNull(delayBill, "应包含 IR 延误运单运费账单");
 
         mockMvc.perform(post("/api/open/ir/actions")
                         .header("X-Api-Key", "test-open-key")
@@ -85,13 +96,39 @@ public class OpenIrControllerTest {
         assertNotNull(openOrder, "应包含未调度运输单 TO-DEMO02");
         org.junit.jupiter.api.Assertions.assertEquals("CREATED", openOrder.path("status").asText());
 
+        String dedicated = "{\"type\":\"TMS_DISPATCH\",\"targetKey\":\"TO-DEMO02\","
+                + "\"idempotencyKey\":\"TMS-DEDICATED-1\"}";
+        mockMvc.perform(post("/api/open/ir/dispatch")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dedicated))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("DISPATCHED"));
+        mockMvc.perform(post("/api/open/ir/dispatch")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dedicated))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("DISPATCHED"));
+
         mockMvc.perform(post("/api/open/ir/actions")
                         .header("X-Api-Key", "test-open-key")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"TMS_DISPATCH\",\"targetKey\":\"WB-IR-CREATED\"}"))
+                        .content("{\"type\":\"TMS_DISPATCH\",\"targetKey\":\"WB-IR-CREATED\","
+                                + "\"idempotencyKey\":\"TMS-DISPATCH-1\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.code").value("WB-IR-CREATED"))
+                .andExpect(jsonPath("$.data.status").value("DISPATCHED"));
+        mockMvc.perform(post("/api/open/ir/actions")
+                        .header("X-Api-Key", "test-open-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"TMS_DISPATCH\",\"targetKey\":\"WB-IR-CREATED\","
+                                + "\"idempotencyKey\":\"TMS-DISPATCH-1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.status").value("DISPATCHED"));
     }
 

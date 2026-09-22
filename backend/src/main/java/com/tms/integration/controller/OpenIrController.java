@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +36,7 @@ public class OpenIrController {
     private final WaybillMapper waybillMapper;
     private final TransportOrderMapper transportOrderMapper;
     private final FreightBillMapper freightBillMapper;
+    private final ConcurrentHashMap<String, Object> actionCache = new ConcurrentHashMap<String, Object>();
 
     @Value("${tms.open.api-key:tms-open-key}")
     private String apiKey;
@@ -44,6 +47,7 @@ public class OpenIrController {
         private String targetKey;
         private String carrierCode;
         private String type;
+        private String idempotencyKey;
         private Map<String, Object> params;
     }
 
@@ -148,7 +152,9 @@ public class OpenIrController {
             @RequestHeader(value = "X-Api-Key", required = false) String key,
             @RequestBody CodeReq req) {
         checkKey(key);
-        return R.ok(dispatchService.dispatchByCode(code(req)));
+        return R.ok((Waybill) executeOnce(
+                cacheKey("TMS_DISPATCH", code(req), req.getIdempotencyKey()),
+                () -> dispatchService.dispatchByCode(code(req))));
     }
 
     @PostMapping("/sync-track")
@@ -156,7 +162,9 @@ public class OpenIrController {
             @RequestHeader(value = "X-Api-Key", required = false) String key,
             @RequestBody CodeReq req) {
         checkKey(key);
-        return R.ok(dispatchService.syncTrackByCode(code(req)));
+        return R.ok((Waybill) executeOnce(
+                cacheKey("TMS_SYNC_TRACK", code(req), req.getIdempotencyKey()),
+                () -> dispatchService.syncTrackByCode(code(req))));
     }
 
     @PostMapping("/switch-carrier")
@@ -164,7 +172,9 @@ public class OpenIrController {
             @RequestHeader(value = "X-Api-Key", required = false) String key,
             @RequestBody CodeReq req) {
         checkKey(key);
-        return R.ok(dispatchService.switchCarrierByCode(code(req), carrier(req)));
+        return R.ok((Waybill) executeOnce(
+                cacheKey("TMS_SWITCH_CARRIER", code(req), req.getIdempotencyKey()),
+                () -> dispatchService.switchCarrierByCode(code(req), carrier(req))));
     }
 
     @PostMapping("/actions")
@@ -173,16 +183,44 @@ public class OpenIrController {
             @RequestBody CodeReq req) {
         checkKey(key);
         String type = req.getType() == null ? "" : req.getType();
-        if ("TMS_DISPATCH".equals(type)) {
-            return R.ok(dispatchService.dispatchByCode(code(req), carrier(req)));
+        return R.ok((Waybill) executeOnce(cacheKey(type, code(req), req.getIdempotencyKey()), () -> {
+            if ("TMS_DISPATCH".equals(type)) {
+                return dispatchService.dispatchByCode(code(req), carrier(req));
+            }
+            if ("TMS_SYNC_TRACK".equals(type)) {
+                return dispatchService.syncTrackByCode(code(req));
+            }
+            if ("TMS_SWITCH_CARRIER".equals(type)) {
+                return dispatchService.switchCarrierByCode(code(req), carrier(req));
+            }
+            throw new BizException("不支持的 IR 指令: " + type);
+        }));
+    }
+
+    private Object executeOnce(String cacheKey, Supplier<Object> work) {
+        if (cacheKey == null) {
+            return work.get();
         }
-        if ("TMS_SYNC_TRACK".equals(type)) {
-            return R.ok(dispatchService.syncTrackByCode(code(req)));
+        Object cached = actionCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
         }
-        if ("TMS_SWITCH_CARRIER".equals(type)) {
-            return R.ok(dispatchService.switchCarrierByCode(code(req), carrier(req)));
+        synchronized (actionCache) {
+            cached = actionCache.get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
+            Object created = work.get();
+            actionCache.put(cacheKey, created);
+            return created;
         }
-        throw new BizException("不支持的 IR 指令: " + type);
+    }
+
+    private static String cacheKey(String type, String targetKey, String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.trim().isEmpty() || "null".equals(idempotencyKey)) {
+            return null;
+        }
+        return type + "|" + (targetKey == null ? "" : targetKey) + "|" + idempotencyKey.trim();
     }
 
     private String code(CodeReq req) {
