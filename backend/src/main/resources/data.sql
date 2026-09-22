@@ -47,3 +47,15 @@ INSERT INTO tms_transport_order(code,source_no,customer_code,order_type,from_sit
 SELECT 'TO-IR-EXC','IR-SO-EXC','CUS03','DELIVERY','WH01','IR异常客户','上海客户地址',121.47,31.23,1,3,.1,16.667,16.667,6000,'IN_TRANSIT',9,
 (SELECT id FROM tms_waybill WHERE code='WB-IR-EXC'),'WB-IR-EXC'
 WHERE NOT EXISTS(SELECT 1 FROM tms_transport_order WHERE code='TO-IR-EXC');
+INSERT INTO tms_freight_bill(code,waybill_id,waybill_code,order_id,order_code,carrier_code,rule_code,charge_type,quantity,amount,status,created_at,updated_at)
+SELECT 'FB-IR-DELAY', w.id, 'WB-IR-DELAY', o.id, 'TO-IR-DELAY', 'SF', 'RR_SF', 'WEIGHT', 6, 18, 'UNPAID', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM tms_waybill w
+JOIN tms_transport_order o ON o.code='TO-IR-DELAY'
+WHERE w.code='WB-IR-DELAY'
+AND NOT EXISTS(SELECT 1 FROM tms_freight_bill WHERE code='FB-IR-DELAY');
+INSERT INTO tms_freight_bill(code,waybill_id,waybill_code,order_id,order_code,carrier_code,rule_code,charge_type,quantity,amount,status,created_at,updated_at)
+SELECT 'FB-IR-EXC', w.id, 'WB-IR-EXC', o.id, 'TO-IR-EXC', 'SF', 'RR_SF', 'WEIGHT', 3, 22, 'UNPAID', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM tms_waybill w
+JOIN tms_transport_order o ON o.code='TO-IR-EXC'
+WHERE w.code='WB-IR-EXC'
+AND NOT EXISTS(SELECT 1 FROM tms_freight_bill WHERE code='FB-IR-EXC');

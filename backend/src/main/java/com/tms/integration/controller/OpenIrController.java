@@ -152,7 +152,9 @@ public class OpenIrController {
             @RequestHeader(value = "X-Api-Key", required = false) String key,
             @RequestBody CodeReq req) {
         checkKey(key);
-        return R.ok(dispatchService.dispatchByCode(code(req)));
+        return R.ok((Waybill) executeOnce(
+                cacheKey("TMS_DISPATCH", code(req), req.getIdempotencyKey()),
+                () -> dispatchService.dispatchByCode(code(req))));
     }
 
     @PostMapping("/sync-track")
@@ -160,7 +162,9 @@ public class OpenIrController {
             @RequestHeader(value = "X-Api-Key", required = false) String key,
             @RequestBody CodeReq req) {
         checkKey(key);
-        return R.ok(dispatchService.syncTrackByCode(code(req)));
+        return R.ok((Waybill) executeOnce(
+                cacheKey("TMS_SYNC_TRACK", code(req), req.getIdempotencyKey()),
+                () -> dispatchService.syncTrackByCode(code(req))));
     }
 
     @PostMapping("/switch-carrier")
@@ -168,7 +172,9 @@ public class OpenIrController {
             @RequestHeader(value = "X-Api-Key", required = false) String key,
             @RequestBody CodeReq req) {
         checkKey(key);
-        return R.ok(dispatchService.switchCarrierByCode(code(req), carrier(req)));
+        return R.ok((Waybill) executeOnce(
+                cacheKey("TMS_SWITCH_CARRIER", code(req), req.getIdempotencyKey()),
+                () -> dispatchService.switchCarrierByCode(code(req), carrier(req))));
     }
 
     @PostMapping("/actions")
