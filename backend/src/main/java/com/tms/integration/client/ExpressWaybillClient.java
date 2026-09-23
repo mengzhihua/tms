@@ -6,7 +6,6 @@ import com.tms.common.BizException;
 import com.tms.dispatch.entity.Waybill;
 import com.tms.order.entity.TransportOrder;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -77,10 +76,6 @@ public class ExpressWaybillClient {
     }
 
     public static Map<String, Object> payload(Waybill waybill, List<TransportOrder> orders) {
-        Map<String, Object> body = new LinkedHashMap<String, Object>();
-        body.put("carrierCode", waybill == null ? null : waybill.getCarrierCode());
-        body.put("waybillCode", waybill == null ? null : waybill.getCode());
-        body.put("fromSiteCode", waybill == null ? null : waybill.getFromSiteCode());
         List<String> orderNos = new ArrayList<String>();
         if (orders != null) {
             for (TransportOrder order : orders) {
@@ -89,8 +84,11 @@ public class ExpressWaybillClient {
                 }
             }
         }
-        body.put("orderNos", orderNos);
-        return body;
+        return WaybillPayload.shape(
+                waybill == null ? null : waybill.getCarrierCode(),
+                waybill == null ? null : waybill.getCode(),
+                waybill == null ? null : waybill.getFromSiteCode(),
+                orderNos);
     }
 
     public static String trackingNo(JsonNode root) {
