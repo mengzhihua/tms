@@ -67,6 +67,10 @@ public final class MapBinder {
         private final String vehicleType;
         private final BigDecimal distanceKm;
         private final String note;
+        private final BigDecimal orderLng;
+        private final BigDecimal orderLat;
+        private final BigDecimal vehicleLng;
+        private final BigDecimal vehicleLat;
 
         private Assignment(
                 String orderCode,
@@ -74,13 +78,21 @@ public final class MapBinder {
                 String plateNo,
                 String vehicleType,
                 BigDecimal distanceKm,
-                String note) {
+                String note,
+                BigDecimal orderLng,
+                BigDecimal orderLat,
+                BigDecimal vehicleLng,
+                BigDecimal vehicleLat) {
             this.orderCode = orderCode;
             this.vehicleId = vehicleId;
             this.plateNo = plateNo;
             this.vehicleType = vehicleType;
             this.distanceKm = distanceKm;
             this.note = note;
+            this.orderLng = orderLng;
+            this.orderLat = orderLat;
+            this.vehicleLng = vehicleLng;
+            this.vehicleLat = vehicleLat;
         }
     }
 
@@ -104,7 +116,7 @@ public final class MapBinder {
                 continue;
             }
             if (order.lng == null || order.lat == null) {
-                result.add(unbound(order.code, "订单没有坐标"));
+                result.add(unbound(order, "订单没有坐标"));
                 continue;
             }
             Seat chosen = null;
@@ -120,7 +132,7 @@ public final class MapBinder {
                 }
             }
             if (chosen == null) {
-                result.add(unbound(order.code, "没有可绑车辆"));
+                result.add(unbound(order, "没有可绑车辆"));
                 continue;
             }
             chosen.take(order);
@@ -131,13 +143,17 @@ public final class MapBinder {
                     chosen.truck.plateNo,
                     chosen.truck.vehicleType,
                     km,
-                    "绑到 " + chosen.truck.plateNo + "，距离 " + km.stripTrailingZeros().toPlainString() + " 公里"));
+                    "绑到 " + chosen.truck.plateNo + "，距离 " + km.stripTrailingZeros().toPlainString() + " 公里",
+                    order.lng,
+                    order.lat,
+                    chosen.truck.lng,
+                    chosen.truck.lat));
         }
         return result;
     }
 
-    private static Assignment unbound(String code, String note) {
-        return new Assignment(code, null, null, null, null, note);
+    private static Assignment unbound(Stop order, String note) {
+        return new Assignment(order.code, null, null, null, null, note, order.lng, order.lat, null, null);
     }
 
     private static final class Seat {
