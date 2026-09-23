@@ -8,11 +8,14 @@ CREATE TABLE IF NOT EXISTS tms_carrier (
     api_provider VARCHAR(32),
     api_key VARCHAR(255),
     api_secret VARCHAR(255),
+    api_base_url VARCHAR(255),
     status VARCHAR(16),
     remark VARCHAR(255),
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
+
+ALTER TABLE tms_carrier ADD COLUMN IF NOT EXISTS api_base_url VARCHAR(255);
 
 CREATE TABLE IF NOT EXISTS tms_vehicle (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
