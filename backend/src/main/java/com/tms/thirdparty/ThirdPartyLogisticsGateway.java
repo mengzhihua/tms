@@ -4,15 +4,20 @@ import com.tms.basic.entity.Carrier;
 import com.tms.basic.mapper.CarrierMapper;
 import com.tms.common.BizException;
 import com.tms.dispatch.entity.Waybill;
+import com.tms.integration.client.ExpressWaybillClient;
 import com.tms.order.entity.TransportOrder;
 import java.util.*;
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ThirdPartyLogisticsGateway {
     private final CarrierMapper carrierMapper;
     private final List<ThirdPartyLogisticsAdapter> adapters;
+
+    @Autowired(required = false)
+    private ExpressWaybillClient expressWaybillClient;
 
     public ThirdPartyLogisticsGateway(
             CarrierMapper mapper, List<ThirdPartyLogisticsAdapter> adapters) {
@@ -37,6 +42,15 @@ public class ThirdPartyLogisticsGateway {
     }
 
     public ShipmentResult create(Waybill w, List<TransportOrder> os) {
+        if (expressWaybillClient != null) {
+            String trackingNo = expressWaybillClient.issue(w, os);
+            if (trackingNo != null) {
+                ShipmentResult live = new ShipmentResult();
+                live.setThirdPartyNo(trackingNo);
+                live.setStatus("ACCEPTED");
+                return live;
+            }
+        }
         Carrier c =
                 carrierMapper.selectOne(
                         new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Carrier>()

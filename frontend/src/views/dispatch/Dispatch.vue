@@ -85,6 +85,7 @@
                 />
               </el-select>
             </el-form-item>
+            <div v-if="quoteNote" class="muted advice">报价说明：{{ quoteNote }}</div>
             <template v-if="!isThirdParty && form.vehicleId">
               <div class="load-check">
                 <div class="load-check-title">
@@ -152,6 +153,18 @@ const form = reactive({
   fromSiteCode: 'WH01'
 })
 
+const quoteNote = computed(() => {
+  const route = routes.value.find((item) => item.code === form.routeCode)
+  const vehicle = idleVehicles.value.find((item) => item.id === form.vehicleId)
+  const parts = []
+  if (route && route.distanceKm != null && route.distanceKm !== '') {
+    parts.push(`距离 ${route.distanceKm} 公里`)
+  }
+  if (vehicle?.vehicleType) {
+    parts.push(`车型 ${vehicle.vehicleType}`)
+  }
+  return parts.join('，')
+})
 const selectedWeight = computed(() =>
   selected.value.reduce((sum, item) => sum + Number(item.totalWeightKg || 0), 0)
 )

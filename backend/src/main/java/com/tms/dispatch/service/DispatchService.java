@@ -11,6 +11,7 @@ import com.tms.basic.mapper.RouteMapper;
 import com.tms.basic.mapper.VehicleMapper;
 import com.tms.billing.entity.FreightBill;
 import com.tms.billing.service.BillingService;
+import com.tms.billing.service.QuoteNote;
 import com.tms.common.BizException;
 import com.tms.common.CarrierRates;
 import com.tms.common.CodeGenerator;
@@ -155,10 +156,26 @@ public class DispatchService {
         for (TransportOrder o : orders(w)) {
             freight = freight.add(billingService.createBill(w, o, distance));
         }
+        String vehicleType = vehicleType(w.getVehiclePlate());
+        for (FreightBill bill : billingService.bills(w.getId())) {
+            bill.setCalcDetail(
+                    QuoteNote.explain(distance, vehicleType, w.getVehiclePlate(), bill.getCalcDetail()));
+            billingService.updateBill(bill);
+        }
         w.setFreightAmount(freight);
         waybillMapper.updateById(w);
         event(w, null, "DISPATCHED", null, null, "已调度");
         return load(id);
+    }
+
+    private String vehicleType(String plateNo) {
+        if (plateNo == null || plateNo.trim().isEmpty()) {
+            return null;
+        }
+        Vehicle vehicle =
+                vehicleMapper.selectOne(
+                        new LambdaQueryWrapper<Vehicle>().eq(Vehicle::getPlateNo, plateNo.trim()));
+        return vehicle == null ? null : vehicle.getVehicleType();
     }
 
     @Transactional
