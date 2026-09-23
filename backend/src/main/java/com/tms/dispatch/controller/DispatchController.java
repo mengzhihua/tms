@@ -3,6 +3,7 @@ package com.tms.dispatch.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.tms.common.R;
 import com.tms.dispatch.service.CarrierAdvisor;
+import com.tms.dispatch.service.CarrierScoreService;
 import com.tms.order.entity.TransportOrder;
 import com.tms.order.mapper.TransportOrderMapper;
 import java.util.List;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class DispatchController {
     private final TransportOrderMapper mapper;
+    private final CarrierScoreService scoreService;
 
     @GetMapping("/pending-orders")
     public R<List<TransportOrder>> pending(@RequestParam(required = false) String fromSiteCode) {
@@ -25,9 +27,12 @@ public class DispatchController {
         return R.ok(mapper.selectList(q));
     }
 
-    /** preference: FAST 时效优先 / CHEAP 成本优先 / BALANCE 两天内选更低费率。空值按平衡。 */
+    /** preference: FAST 时效优先 / CHEAP 成本优先 / BALANCE 两天内选更低费率 / SCORE 按历史评分。空值按平衡。 */
     @GetMapping("/recommend")
     public R<CarrierAdvisor.Advice> recommend(@RequestParam(required = false) String preference) {
+        if (preference != null && "SCORE".equalsIgnoreCase(preference.trim())) {
+            return R.ok(scoreService.recommend());
+        }
         return R.ok(CarrierAdvisor.advise(preference));
     }
 }

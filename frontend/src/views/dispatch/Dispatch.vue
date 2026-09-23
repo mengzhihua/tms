@@ -30,6 +30,7 @@
                 <el-button :loading="advising" @click="recommend('FAST')">时效优先</el-button>
                 <el-button :loading="advising" @click="recommend('BALANCE')">平衡</el-button>
                 <el-button :loading="advising" @click="recommend('CHEAP')">成本优先</el-button>
+                <el-button :loading="advising" @click="recommend('SCORE')">评分优先</el-button>
               </el-button-group>
               <div v-if="advice" class="muted advice">{{ advice.reason }}</div>
             </el-form-item>

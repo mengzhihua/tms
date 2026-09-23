@@ -26,6 +26,7 @@ export const order = {
   create: (data) => http.post('/order', data),
   update: (id, data) => http.put(`/order/${id}`, data),
   cancel: (id) => http.post(`/order/${id}/cancel`),
+  openReturn: (id) => http.post(`/order/${id}/return`),
   volume: (data) => http.post('/order/volume/calc', data),
   loadCheck: (data) => http.post('/order/volume/load-check', data)
 }
