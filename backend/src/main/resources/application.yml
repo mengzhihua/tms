@@ -36,3 +36,7 @@ logging:
 tms:
   open:
     api-key: ${TMS_OPEN_API_KEY:tms-open-key}
+  bms:
+    mode: ${TMS_BMS_MODE:mock}
+    base-url: ${TMS_BMS_URL:http://localhost:8084}
+    api-key: ${TMS_BMS_API_KEY:bms-open-key}
