@@ -17,6 +17,7 @@
             <el-table-column prop="priority" label="优先级" />
           </el-table>
           <div v-for="row in bindings" :key="row.orderCode" class="muted advice">{{ row.orderCode }} {{ row.note }}</div>
+          <div v-if="mapPoints.length" ref="mapEl" class="bind-map"></div>
           <div class="dispatch-summary">
             <span>已选合计重量：{{ selectedWeight.toFixed(3) }} kg</span>
             <span>已选合计体积：{{ selectedVolume.toFixed(3) }} m³</span>
@@ -133,7 +134,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { ElMessage } from 'element-plus'
 import { basic, dispatch, order, waybill } from '../../api'
 
@@ -148,6 +151,9 @@ const creating = ref(false)
 const advising = ref(false)
 const binding = ref(false)
 const bindings = ref([])
+const mapEl = ref(null)
+const mapPoints = ref([])
+let bindMapView = null
 const advice = ref(null)
 const loadCheckResult = reactive({ weightRate: 0, volumeRate: 0 })
 const form = reactive({
@@ -240,9 +246,53 @@ async function bindMap() {
     if (ids.length === 1) {
       form.vehicleId = ids[0]
     }
+    await drawMap(bindings.value)
   } finally {
     binding.value = false
   }
+}
+
+async function drawMap(rows) {
+  const points = []
+  const seen = new Set()
+  for (const row of rows || []) {
+    if (row.orderLat != null && row.orderLng != null) {
+      points.push({
+        lat: Number(row.orderLat),
+        lng: Number(row.orderLng),
+        name: `${row.orderCode} ${row.note}`,
+        color: '#1677ff'
+      })
+    }
+    if (row.vehicleLat != null && row.vehicleLng != null && !seen.has(row.vehicleId)) {
+      seen.add(row.vehicleId)
+      points.push({
+        lat: Number(row.vehicleLat),
+        lng: Number(row.vehicleLng),
+        name: row.plateNo || '车辆',
+        color: '#237804'
+      })
+    }
+  }
+  mapPoints.value = points
+  await nextTick()
+  if (bindMapView) {
+    bindMapView.remove()
+    bindMapView = null
+  }
+  if (!mapEl.value || !points.length) return
+  bindMapView = L.map(mapEl.value)
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(bindMapView)
+  const latlngs = points.map((point) => [point.lat, point.lng])
+  points.forEach((point) => {
+    L.circleMarker([point.lat, point.lng], { radius: 8, color: point.color, fillOpacity: 0.85 })
+      .addTo(bindMapView)
+      .bindPopup(point.name)
+  })
+  bindMapView.fitBounds(latlngs, { padding: [24, 24], maxZoom: 12 })
 }
 
 async function recommend(preference) {
@@ -315,5 +365,9 @@ onMounted(async () => {
 .advice {
   margin-top: 8px;
   line-height: 1.5;
+}
+.bind-map {
+  height: 280px;
+  margin-top: 8px;
 }
 </style>

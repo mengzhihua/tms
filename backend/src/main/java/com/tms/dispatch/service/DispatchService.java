@@ -11,6 +11,7 @@ import com.tms.basic.mapper.RouteMapper;
 import com.tms.basic.mapper.VehicleMapper;
 import com.tms.billing.entity.FreightBill;
 import com.tms.billing.service.BillingService;
+import com.tms.billing.service.FareFormula;
 import com.tms.billing.service.QuoteNote;
 import com.tms.common.BizException;
 import com.tms.common.CarrierRates;
@@ -146,7 +147,6 @@ public class DispatchService {
             w.setThirdPartyStatus("ACCEPTED");
         }
         w.setStatus("DISPATCHED");
-        BigDecimal freight = BigDecimal.ZERO;
         Route route =
                 w.getRouteCode() == null
                         ? null
@@ -154,13 +154,20 @@ public class DispatchService {
                                 new LambdaQueryWrapper<Route>().eq(Route::getCode, w.getRouteCode()));
         BigDecimal distance = route == null ? BigDecimal.ZERO : route.getDistanceKm();
         for (TransportOrder o : orders(w)) {
-            freight = freight.add(billingService.createBill(w, o, distance));
+            billingService.createBill(w, o, distance);
         }
         String vehicleType = vehicleType(w.getVehiclePlate());
+        BigDecimal freight = BigDecimal.ZERO;
         for (FreightBill bill : billingService.bills(w.getId())) {
+            bill.setAmount(FareFormula.total(bill.getAmount(), distance, vehicleType));
             bill.setCalcDetail(
-                    QuoteNote.explain(distance, vehicleType, w.getVehiclePlate(), bill.getCalcDetail()));
+                    QuoteNote.explain(
+                            distance,
+                            vehicleType,
+                            w.getVehiclePlate(),
+                            FareFormula.detail(bill.getCalcDetail(), distance, vehicleType)));
             billingService.updateBill(bill);
+            freight = freight.add(bill.getAmount());
         }
         w.setFreightAmount(freight);
         waybillMapper.updateById(w);
