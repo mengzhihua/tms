@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.tms.common.R;
 import com.tms.dispatch.service.CarrierAdvisor;
 import com.tms.dispatch.service.CarrierScoreService;
+import com.tms.dispatch.service.MapBindService;
+import com.tms.dispatch.service.MapBinder;
 import com.tms.order.entity.TransportOrder;
 import com.tms.order.mapper.TransportOrderMapper;
 import java.util.List;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class DispatchController {
     private final TransportOrderMapper mapper;
     private final CarrierScoreService scoreService;
+    private final MapBindService mapBindService;
 
     @GetMapping("/pending-orders")
     public R<List<TransportOrder>> pending(@RequestParam(required = false) String fromSiteCode) {
@@ -34,5 +37,11 @@ public class DispatchController {
             return R.ok(scoreService.recommend());
         }
         return R.ok(CarrierAdvisor.advise(preference));
+    }
+
+    /** 按订单位置把待派订单绑到最近且装得下的空闲车。 */
+    @GetMapping("/map-bind")
+    public R<List<MapBinder.Assignment>> mapBind(@RequestParam(required = false) String fromSiteCode) {
+        return R.ok(mapBindService.bind(fromSiteCode));
     }
 }

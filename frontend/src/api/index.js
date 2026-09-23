@@ -46,7 +46,8 @@ export const waybill = {
 
 export const dispatch = {
   pending: (params) => http.get('/dispatch/pending-orders', { params }),
-  recommend: (preference) => http.get('/dispatch/recommend', { params: { preference } })
+  recommend: (preference) => http.get('/dispatch/recommend', { params: { preference } }),
+  mapBind: (params) => http.get('/dispatch/map-bind', { params })
 }
 
 export const tracking = {

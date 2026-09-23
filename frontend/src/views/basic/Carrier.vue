@@ -22,6 +22,7 @@ const columns = [
   { prop: 'phone', label: '电话' },
   { prop: 'apiProvider', label: '适配器' },
   { prop: 'apiKey', label: 'API Key' },
+  { prop: 'apiBaseUrl', label: '取号地址' },
   { prop: 'status', label: '状态', type: 'status' }
 ]
 </script>

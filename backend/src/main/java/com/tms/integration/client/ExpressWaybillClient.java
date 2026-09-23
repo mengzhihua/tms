@@ -29,23 +29,25 @@ public class ExpressWaybillClient {
     @Value("${tms.express.api-key:}")
     private String apiKey;
 
-    /** mock 返回 null，调用方继续走本地适配器。 */
+    /** mock 返回 null，调用方继续走本地适配器。承运商自己的地址优先于全局地址。 */
     public String issue(Waybill waybill, List<TransportOrder> orders) {
+        return issue(waybill, orders, null, null);
+    }
+
+    public String issue(Waybill waybill, List<TransportOrder> orders, String carrierBase, String carrierKey) {
         if (!"http".equalsIgnoreCase(mode)) {
             return null;
         }
-        if (baseUrl == null || baseUrl.trim().isEmpty()) {
-            throw new BizException("电子面单地址未配置");
-        }
+        String key = chooseBase(carrierKey, apiKey);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        if (apiKey != null && !apiKey.trim().isEmpty()) {
-            headers.set("X-Api-Key", apiKey.trim());
+        if (key != null) {
+            headers.set("X-Api-Key", key);
         }
         try {
             String response =
                     rest.postForObject(
-                            baseUrl.replaceAll("/$", "") + "/api/open/waybill",
+                            endpoint(chooseBase(carrierBase, baseUrl)),
                             new HttpEntity<Object>(payload(waybill, orders), headers),
                             String.class);
             return trackingNo(objectMapper.readTree(response == null ? "{}" : response));
@@ -54,6 +56,24 @@ public class ExpressWaybillClient {
         } catch (Exception e) {
             throw new BizException("电子面单取号失败: " + e.getMessage());
         }
+    }
+
+    /** 承运商地址优先。两边都空时返回 null。 */
+    public static String chooseBase(String preferred, String fallback) {
+        if (preferred != null && !preferred.trim().isEmpty()) {
+            return preferred.trim();
+        }
+        if (fallback != null && !fallback.trim().isEmpty()) {
+            return fallback.trim();
+        }
+        return null;
+    }
+
+    public static String endpoint(String base) {
+        if (base == null || base.trim().isEmpty()) {
+            throw new BizException("电子面单地址未配置");
+        }
+        return base.trim().replaceAll("/$", "") + "/api/open/waybill";
     }
 
     public static Map<String, Object> payload(Waybill waybill, List<TransportOrder> orders) {

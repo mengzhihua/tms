@@ -5,6 +5,7 @@
         <div class="card">
           <div class="toolbar">
             <el-button type="primary" @click="load">刷新待调度订单</el-button>
+            <el-button :loading="binding" @click="bindMap">按地图绑车</el-button>
             <span class="muted">已选 {{ selected.length }} 单</span>
           </div>
           <el-table :data="orders" border @selection-change="selected = $event">
@@ -15,6 +16,7 @@
             <el-table-column prop="totalVolumeM3" label="体积(m³)" />
             <el-table-column prop="priority" label="优先级" />
           </el-table>
+          <div v-for="row in bindings" :key="row.orderCode" class="muted advice">{{ row.orderCode }} {{ row.note }}</div>
           <div class="dispatch-summary">
             <span>已选合计重量：{{ selectedWeight.toFixed(3) }} kg</span>
             <span>已选合计体积：{{ selectedVolume.toFixed(3) }} m³</span>
@@ -144,6 +146,8 @@ const routes = ref([])
 const sites = ref([])
 const creating = ref(false)
 const advising = ref(false)
+const binding = ref(false)
+const bindings = ref([])
 const advice = ref(null)
 const loadCheckResult = reactive({ weightRate: 0, volumeRate: 0 })
 const form = reactive({
@@ -224,6 +228,21 @@ async function loadOptions() {
 async function load() {
   orders.value = await dispatch.pending({})
   await checkLoad()
+}
+
+async function bindMap() {
+  binding.value = true
+  try {
+    bindings.value = (await dispatch.mapBind({ fromSiteCode: form.fromSiteCode })) || []
+    const focus = selected.value.length ? selected.value.map((item) => item.code) : bindings.value.map((item) => item.orderCode)
+    const hits = bindings.value.filter((item) => focus.includes(item.orderCode) && item.vehicleId)
+    const ids = [...new Set(hits.map((item) => item.vehicleId))]
+    if (ids.length === 1) {
+      form.vehicleId = ids[0]
+    }
+  } finally {
+    binding.value = false
+  }
 }
 
 async function recommend(preference) {

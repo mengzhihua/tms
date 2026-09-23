@@ -43,7 +43,16 @@ public class ThirdPartyLogisticsGateway {
 
     public ShipmentResult create(Waybill w, List<TransportOrder> os) {
         if (expressWaybillClient != null) {
-            String trackingNo = expressWaybillClient.issue(w, os);
+            Carrier liveCarrier =
+                    carrierMapper.selectOne(
+                            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Carrier>()
+                                    .eq(Carrier::getCode, w.getCarrierCode()));
+            String trackingNo =
+                    expressWaybillClient.issue(
+                            w,
+                            os,
+                            liveCarrier == null ? null : liveCarrier.getApiBaseUrl(),
+                            liveCarrier == null ? null : liveCarrier.getApiKey());
             if (trackingNo != null) {
                 ShipmentResult live = new ShipmentResult();
                 live.setThirdPartyNo(trackingNo);

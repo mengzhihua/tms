@@ -1,6 +1,7 @@
 package com.tms.integration.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +32,15 @@ class ExpressWaybillClientTest {
                 ExpressWaybillClient.trackingNo(
                         new ObjectMapper().readTree("{\"code\":0,\"data\":{\"trackingNo\":\"SF1001\"}}"));
         assertEquals("SF1001", no);
+    }
+
+    @Test
+    void carrierAddressBeatsGlobalAddress() {
+        assertEquals("http://carrier.example", ExpressWaybillClient.chooseBase(" http://carrier.example ", "http://global"));
+        assertEquals("http://global", ExpressWaybillClient.chooseBase(" ", "http://global"));
+        assertNull(ExpressWaybillClient.chooseBase(null, " "));
+        assertEquals("http://carrier.example/api/open/waybill", ExpressWaybillClient.endpoint("http://carrier.example/"));
+        assertThrows(BizException.class, () -> ExpressWaybillClient.endpoint(null));
     }
 
     @Test

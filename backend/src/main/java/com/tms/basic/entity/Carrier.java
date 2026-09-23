@@ -9,5 +9,5 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @TableName("tms_carrier")
 public class Carrier extends BaseEntity {
-    private String code, name, type, contact, phone, apiProvider, apiKey, apiSecret, status;
+    private String code, name, type, contact, phone, apiProvider, apiKey, apiSecret, apiBaseUrl, status;
 }
