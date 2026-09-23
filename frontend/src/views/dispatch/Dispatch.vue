@@ -25,6 +25,14 @@
         <div class="card">
           <h3>创建运单</h3>
           <el-form :model="form" label-width="100px">
+            <el-form-item label="择优">
+              <el-button-group>
+                <el-button :loading="advising" @click="recommend('FAST')">时效优先</el-button>
+                <el-button :loading="advising" @click="recommend('BALANCE')">平衡</el-button>
+                <el-button :loading="advising" @click="recommend('CHEAP')">成本优先</el-button>
+              </el-button-group>
+              <div v-if="advice" class="muted advice">{{ advice.reason }}</div>
+            </el-form-item>
             <el-form-item label="承运商">
               <el-select v-model="form.carrierCode" filterable style="width: 100%" @change="carrierChanged">
                 <el-option
@@ -133,6 +141,8 @@ const drivers = ref([])
 const routes = ref([])
 const sites = ref([])
 const creating = ref(false)
+const advising = ref(false)
+const advice = ref(null)
 const loadCheckResult = reactive({ weightRate: 0, volumeRate: 0 })
 const form = reactive({
   carrierCode: 'SELF01',
@@ -202,6 +212,19 @@ async function load() {
   await checkLoad()
 }
 
+async function recommend(preference) {
+  advising.value = true
+  try {
+    advice.value = await dispatch.recommend(preference)
+    if (advice.value?.carrierCode) {
+      form.carrierCode = advice.value.carrierCode
+      await carrierChanged()
+    }
+  } finally {
+    advising.value = false
+  }
+}
+
 async function carrierChanged() {
   if (isThirdParty.value) {
     form.vehicleId = null
@@ -254,3 +277,10 @@ onMounted(async () => {
   await load()
 })
 </script>
+
+<style scoped>
+.advice {
+  margin-top: 8px;
+  line-height: 1.5;
+}
+</style>
