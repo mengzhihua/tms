@@ -250,7 +250,7 @@ public class DispatchService {
         } else {
             waybillMapper.updateById(w);
         }
-        if (omsSignClient != null && "DELIVERED".equals(o.getStatus())) {
+        if (omsSignClient != null && "DELIVERED".equals(o.getStatus()) && !"RETURN".equals(o.getOrderType())) {
             omsSignClient.push(o);
         }
         return load(id);
