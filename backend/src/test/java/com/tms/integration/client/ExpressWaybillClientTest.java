@@ -24,6 +24,27 @@ class ExpressWaybillClientTest {
         Map<String, Object> body = ExpressWaybillClient.payload(waybill, Collections.singletonList(order));
         assertEquals("SF", body.get("carrierCode"));
         assertEquals(Collections.singletonList("TO-1"), body.get("orderNos"));
+        assertEquals("SF", body.get("profile"));
+        assertEquals(Boolean.TRUE, body.get("sandbox"));
+        assertEquals("WB-1", body.get("orderId"));
+        assertEquals("1", body.get("expressType"));
+    }
+
+    @Test
+    void jdAndOtherCarriersKeepSandboxPayload() {
+        Waybill jd = new Waybill();
+        jd.setCode("WB-2");
+        jd.setCarrierCode("jd");
+        Map<String, Object> jdBody = ExpressWaybillClient.payload(jd, Collections.<TransportOrder>emptyList());
+        assertEquals("JD", jdBody.get("profile"));
+        assertEquals(Boolean.TRUE, jdBody.get("sandbox"));
+        assertEquals("1", jdBody.get("promiseTimeType"));
+        Waybill self = new Waybill();
+        self.setCarrierCode("SELF01");
+        Map<String, Object> generic = ExpressWaybillClient.payload(self, null);
+        assertEquals("GENERIC", generic.get("profile"));
+        assertEquals(Boolean.TRUE, generic.get("sandbox"));
+        assertNull(generic.get("expressType"));
     }
 
     @Test
