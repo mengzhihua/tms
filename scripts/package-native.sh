@@ -7,7 +7,7 @@ NAME="tms"
 TITLE="TMS 运输管理"
 VERSION="1.0.0"
 ARTIFACT="tms-backend"
-PORT="8083"
+PORT="8082"
 DIST="$ROOT/release"
 JAR="$ROOT/backend/target/${ARTIFACT}-${VERSION}.jar"
 test -f "$JAR"
@@ -58,7 +58,7 @@ ARGS=(
   --java-options "-Duser.dir=\$APPDIR"
   --add-modules ALL-MODULE-PATH
 )
-ARGS+=(--arguments "--server.port=8083")
+ARGS+=(--arguments "--server.port=8082")
 
 if [[ "$PLATFORM" == "windows-x64" ]]; then
   ARGS+=(--win-console)

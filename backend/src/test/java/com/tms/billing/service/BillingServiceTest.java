@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.tms.basic.entity.RateRule;
 import com.tms.basic.mapper.RateRuleMapper;
+import com.tms.billing.entity.FreightBill;
 import com.tms.billing.mapper.FreightBillMapper;
 import com.tms.common.CodeGenerator;
 import com.tms.order.entity.TransportOrder;
@@ -66,5 +67,19 @@ class BillingServiceTest {
         BillingService.CalcResult out =
                 s.calc("SELF01", "DISTANCE", new TransportOrder(), new BigDecimal("200"));
         assertEquals(new BigDecimal("900"), out.getAmount());
+    }
+
+    @Test
+    void freightDeltaDocCarriesStatedAmount() {
+        FreightBill bill = new FreightBill();
+        bill.setCode("FD1");
+        bill.setWaybillCode("WB-1");
+        bill.setCarrierCode("SELF01");
+        bill.setAmount(new BigDecimal("-40.00"));
+        bill.setCalcDetail("SF->SELF01");
+        java.util.Map<String, Object> doc = BillingService.bmsDoc(bill);
+        assertEquals("WB-1:FD1", doc.get("extRef"));
+        assertEquals("AP", doc.get("direction"));
+        assertEquals(0, new BigDecimal("-40.00").compareTo((BigDecimal) doc.get("statedAmount")));
     }
 }

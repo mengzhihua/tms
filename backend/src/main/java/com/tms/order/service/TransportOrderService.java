@@ -56,6 +56,16 @@ public class TransportOrderService {
         return load(id);
     }
 
+    public TransportOrder findBySourceNo(String sourceNo) {
+        if (sourceNo == null || sourceNo.trim().isEmpty()) {
+            return null;
+        }
+        TransportOrder order = orderMapper.selectOne(new LambdaQueryWrapper<TransportOrder>()
+                .eq(TransportOrder::getSourceNo, sourceNo.trim())
+                .last("LIMIT 1"));
+        return order == null ? null : load(order.getId());
+    }
+
     public TransportOrder load(Long id) {
         TransportOrder o = require(id);
         o.setLines(

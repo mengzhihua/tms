@@ -13,6 +13,7 @@ import java.math.*;
 import java.util.*;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -21,6 +22,9 @@ public class BillingService {
     private final RateRuleMapper ruleMapper;
     private final FreightBillMapper billMapper;
     private final CodeGenerator codeGenerator;
+
+    @Autowired(required = false)
+    private BmsFreightClient bmsFreightClient;
 
     public CalcResult calc(
             String carrierCode, String chargeType, TransportOrder order, BigDecimal distanceKm) {
@@ -91,6 +95,56 @@ public class BillingService {
         b.setStatus("UNBILLED");
         billMapper.insert(b);
         return r.amount;
+    }
+
+    /** 换承运商产生的运费差额。正数是加价，负数是节约。零差额不落单。 */
+    public FreightBill recordFreightDelta(
+            com.tms.dispatch.entity.Waybill w,
+            String fromCarrier,
+            BigDecimal fromAmount,
+            BigDecimal toAmount) {
+        BigDecimal delta = freightDelta(fromAmount, toAmount);
+        if (delta == null) {
+            return null;
+        }
+        FreightBill b = new FreightBill();
+        b.setCode(codeGenerator.next("FD"));
+        b.setWaybillId(w.getId());
+        b.setWaybillCode(w.getCode());
+        b.setCarrierCode(w.getCarrierCode());
+        b.setChargeType("FREIGHT_DELTA");
+        b.setQuantity(BigDecimal.ONE);
+        b.setAmount(delta);
+        b.setStatus("UNBILLED");
+        b.setCalcDetail(fromCarrier + "->" + w.getCarrierCode()
+                + " " + fromAmount.toPlainString() + "->" + toAmount.toPlainString());
+        billMapper.insert(b);
+        if (bmsFreightClient != null) {
+            bmsFreightClient.push(b);
+        }
+        return b;
+    }
+
+    public static java.util.Map<String, Object> bmsDoc(FreightBill bill) {
+        java.util.Map<String, Object> doc = new java.util.LinkedHashMap<String, Object>();
+        doc.put("extRef", bill.getWaybillCode() + ":" + bill.getCode());
+        doc.put("bizType", "TRANSPORT");
+        doc.put("customerCode", "CUST-001");
+        doc.put("supplierCode", bill.getCarrierCode());
+        doc.put("statedAmount", bill.getAmount());
+        doc.put("direction", "AP");
+        doc.put("chargeItemCode", "FREIGHT");
+        doc.put("qty", BigDecimal.ONE);
+        doc.put("remark", bill.getCalcDetail());
+        return doc;
+    }
+
+    public static BigDecimal freightDelta(BigDecimal fromAmount, BigDecimal toAmount) {
+        if (fromAmount == null || toAmount == null) {
+            return null;
+        }
+        BigDecimal delta = toAmount.subtract(fromAmount);
+        return delta.signum() == 0 ? null : delta;
     }
 
     public List<FreightBill> bills(Long waybillId) {

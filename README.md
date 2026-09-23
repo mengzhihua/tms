@@ -121,7 +121,7 @@ SIGNED 回调会复用运单到达和逐单签收流程。
 
 控制塔读 `GET /api/open/ir/snapshots`（运单、账单），写 `POST /api/open/ir/actions`，并回退 `/dispatch`、`/sync-track`、`/switch-carrier`。写指令不走登录口。没有 Key 时，读数回退运单分页、账单分页和工作台。
 
-发行包默认端口是 `8083`。控制塔种子里的 TMS 地址是 `8082`，同机联调时两边要改成同一个端口。
+发行包默认端口是 `8082`，与控制塔种子里的 TMS 地址一致。`mvn spring-boot:run` 仍监听 `8080`。
 
 ## 发布包（开箱即用）
 
@@ -130,7 +130,7 @@ SIGNED 回调会复用运单到达和逐单签收流程。
 ### 1. 服务端（任意已装 JDK 17 的机器）
 
 ```bash
-java -jar tms-backend-1.0.0.jar --server.port=8083
+java -jar tms-backend-1.0.0.jar --server.port=8082
 ```
 
 Linux systemd 示例见发布包 `README.txt`。
@@ -158,7 +158,7 @@ cd tms-1.0.0
 - `tms-1.0.0-macos-arm64.zip` → Apple Silicon（M 系列），双击 `tms.app`
 - `tms-1.0.0-macos-x64.zip` → Intel Mac，双击 `tms.app`
 
-浏览器访问 `http://127.0.0.1:8083`。本系统无登录页，打开即可用。
+浏览器访问 `http://127.0.0.1:8082`。本系统无登录页，打开即可用。
 
-十二套系统可同时启动：OMS 8081 / WMS 8082 / TMS 8083 / BMS 8084 / SAP 8085 / OA 8086 / SRM 8087 / BOM 8088 / INV 8089 / IR 8090 / CRM 8091 / DMS 8092。
+十二套系统可同时启动：OMS 8081 / WMS 8083 / TMS 8082 / BMS 8084 / SAP 8085 / OA 8086 / SRM 8087 / BOM 8088 / INV 8089 / IR 8090 / CRM 8091 / DMS 8092。
 

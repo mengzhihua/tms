@@ -16,6 +16,7 @@ import com.tms.common.CarrierRates;
 import com.tms.common.CodeGenerator;
 import com.tms.dispatch.entity.Waybill;
 import com.tms.dispatch.mapper.WaybillMapper;
+import com.tms.integration.client.OmsSignClient;
 import com.tms.order.entity.TransportOrder;
 import com.tms.order.mapper.TransportOrderMapper;
 import com.tms.order.service.VolumeService;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +47,9 @@ public class DispatchService {
     private final VolumeService volumeService;
     private final BillingService billingService;
     private final ThirdPartyLogisticsGateway gateway;
+
+    @Autowired(required = false)
+    private OmsSignClient omsSignClient;
 
     @Transactional
     public Waybill create(CreateReq req) {
@@ -244,6 +249,9 @@ public class DispatchService {
             }
         } else {
             waybillMapper.updateById(w);
+        }
+        if (omsSignClient != null && "DELIVERED".equals(o.getStatus())) {
+            omsSignClient.push(o);
         }
         return load(id);
     }
@@ -524,10 +532,14 @@ public class DispatchService {
         }
         waybillMapper.updateById(w);
         for (FreightBill bill : billingService.bills(w.getId())) {
+            if ("FREIGHT_DELTA".equals(bill.getChargeType())) {
+                continue;
+            }
             bill.setCarrierCode(c.getCode());
             bill.setAmount(CarrierRates.scaledFreight(fromCarrier, c.getCode(), bill.getAmount()));
             billingService.updateBill(bill);
         }
+        billingService.recordFreightDelta(w, fromCarrier, fromFreight, toFreight);
         event(w, null, "SWITCH_CARRIER", null, null, "IR 换承运商 " + carrierCode.trim());
         return load(w.getId());
     }
