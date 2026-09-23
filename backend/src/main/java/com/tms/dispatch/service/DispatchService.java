@@ -524,10 +524,14 @@ public class DispatchService {
         }
         waybillMapper.updateById(w);
         for (FreightBill bill : billingService.bills(w.getId())) {
+            if ("FREIGHT_DELTA".equals(bill.getChargeType())) {
+                continue;
+            }
             bill.setCarrierCode(c.getCode());
             bill.setAmount(CarrierRates.scaledFreight(fromCarrier, c.getCode(), bill.getAmount()));
             billingService.updateBill(bill);
         }
+        billingService.recordFreightDelta(w, fromCarrier, fromFreight, toFreight);
         event(w, null, "SWITCH_CARRIER", null, null, "IR 换承运商 " + carrierCode.trim());
         return load(w.getId());
     }

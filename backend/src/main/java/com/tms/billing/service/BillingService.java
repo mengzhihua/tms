@@ -93,6 +93,39 @@ public class BillingService {
         return r.amount;
     }
 
+    /** 换承运商产生的运费差额。正数是加价，负数是节约。零差额不落单。 */
+    public FreightBill recordFreightDelta(
+            com.tms.dispatch.entity.Waybill w,
+            String fromCarrier,
+            BigDecimal fromAmount,
+            BigDecimal toAmount) {
+        BigDecimal delta = freightDelta(fromAmount, toAmount);
+        if (delta == null) {
+            return null;
+        }
+        FreightBill b = new FreightBill();
+        b.setCode(codeGenerator.next("FD"));
+        b.setWaybillId(w.getId());
+        b.setWaybillCode(w.getCode());
+        b.setCarrierCode(w.getCarrierCode());
+        b.setChargeType("FREIGHT_DELTA");
+        b.setQuantity(BigDecimal.ONE);
+        b.setAmount(delta);
+        b.setStatus("UNBILLED");
+        b.setCalcDetail(fromCarrier + "->" + w.getCarrierCode()
+                + " " + fromAmount.toPlainString() + "->" + toAmount.toPlainString());
+        billMapper.insert(b);
+        return b;
+    }
+
+    public static BigDecimal freightDelta(BigDecimal fromAmount, BigDecimal toAmount) {
+        if (fromAmount == null || toAmount == null) {
+            return null;
+        }
+        BigDecimal delta = toAmount.subtract(fromAmount);
+        return delta.signum() == 0 ? null : delta;
+    }
+
     public List<FreightBill> bills(Long waybillId) {
         return billMapper.selectList(
                 new LambdaQueryWrapper<FreightBill>().eq(FreightBill::getWaybillId, waybillId));

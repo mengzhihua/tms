@@ -84,6 +84,15 @@ class DispatchSwitchFreightTest {
         verify(billingService).updateBill(billCaptor.capture());
         assertEquals("SELF01", billCaptor.getValue().getCarrierCode());
         assertEquals(0, new BigDecimal("70.00").compareTo(billCaptor.getValue().getAmount()));
+
+        ArgumentCaptor<BigDecimal> fromAmount = ArgumentCaptor.forClass(BigDecimal.class);
+        ArgumentCaptor<BigDecimal> toAmount = ArgumentCaptor.forClass(BigDecimal.class);
+        verify(billingService).recordFreightDelta(any(), org.mockito.ArgumentMatchers.eq("SF"),
+                fromAmount.capture(), toAmount.capture());
+        assertEquals(0, new BigDecimal("110").compareTo(fromAmount.getValue()));
+        assertEquals(0, new BigDecimal("70.00").compareTo(toAmount.getValue()));
+        assertEquals(0, new BigDecimal("-40.00").compareTo(
+                com.tms.billing.service.BillingService.freightDelta(fromAmount.getValue(), toAmount.getValue())));
     }
 
     @Test
