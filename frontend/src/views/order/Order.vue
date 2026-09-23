@@ -16,11 +16,22 @@
         <el-table-column label="创建时间" width="175">
           <template #default="{ row }">{{ fmt(row.createdAt) }}</template>
         </el-table-column>
+        <el-table-column label="类型" width="80">
+          <template #default="{ row }">{{ typeLabel(row.orderType) }}</template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }"><StatusTag :value="row.status" /></template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
+            <el-button
+              v-if="row.status === 'DELIVERED' && row.orderType !== 'RETURN'"
+              link
+              type="primary"
+              @click="openReturn(row)"
+            >
+              回货
+            </el-button>
             <el-button link type="primary" @click="openForm(row)">编辑</el-button>
             <el-button
               v-if="row.status === 'CREATED'"
@@ -254,6 +265,18 @@ async function save() {
   }
   ElMessage.success('保存成功')
   visible.value = false
+  await load()
+}
+
+function typeLabel(orderType) {
+  if (orderType === 'RETURN') return '回货'
+  if (orderType === 'TRANSFER') return '调拨'
+  return '配送'
+}
+
+async function openReturn(row) {
+  const created = await order.openReturn(row.id)
+  ElMessage.success(`回货单 ${created.code}`)
   await load()
 }
 

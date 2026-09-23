@@ -8,6 +8,8 @@ import com.tms.order.entity.TransportOrderLine;
 import com.tms.order.mapper.TransportOrderLineMapper;
 import com.tms.order.mapper.TransportOrderMapper;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +76,69 @@ public class TransportOrderService {
                                 .eq(TransportOrderLine::getOrderId, id)
                                 .orderByAsc(TransportOrderLine::getId)));
         return o;
+    }
+
+    /** 已送达订单另开一张回货单，收发双方对调。同一正向单重复调用返回已有回货单。 */
+    @Transactional
+    public TransportOrder openReturn(Long id) {
+        TransportOrder forward = load(id);
+        TransportOrder existing =
+                orderMapper.selectOne(
+                        new LambdaQueryWrapper<TransportOrder>()
+                                .eq(TransportOrder::getOrderType, "RETURN")
+                                .eq(TransportOrder::getSourceNo, forward.getCode())
+                                .last("LIMIT 1"));
+        if (existing != null) {
+            return load(existing.getId());
+        }
+        return create(returnDraft(forward));
+    }
+
+    public static TransportOrder returnDraft(TransportOrder forward) {
+        if (forward == null || !"DELIVERED".equals(forward.getStatus())) {
+            throw new BizException("只有已送达的订单可以开逆向回货单");
+        }
+        TransportOrder back = new TransportOrder();
+        back.setOrderType("RETURN");
+        back.setSourceNo(forward.getCode());
+        back.setCustomerCode(forward.getCustomerCode());
+        back.setFromSiteCode(forward.getFromSiteCode());
+        back.setPriority(forward.getPriority());
+        back.setVolumeRatio(forward.getVolumeRatio());
+        back.setConsignorName(forward.getConsigneeName());
+        back.setConsignorPhone(forward.getConsigneePhone());
+        back.setConsignorAddress(forward.getConsigneeAddress());
+        back.setConsignorLng(forward.getConsigneeLng());
+        back.setConsignorLat(forward.getConsigneeLat());
+        back.setConsigneeName(text(forward.getConsignorName(), forward.getFromSiteCode()));
+        back.setConsigneePhone(forward.getConsignorPhone());
+        back.setConsigneeAddress(text(forward.getConsignorAddress(), forward.getFromSiteCode()));
+        back.setConsigneeLng(forward.getConsignorLng());
+        back.setConsigneeLat(forward.getConsignorLat());
+        List<TransportOrderLine> lines = new ArrayList<TransportOrderLine>();
+        if (forward.getLines() != null) {
+            for (TransportOrderLine line : forward.getLines()) {
+                TransportOrderLine copy = new TransportOrderLine();
+                copy.setItemCode(line.getItemCode());
+                copy.setItemName(line.getItemName());
+                copy.setQty(line.getQty());
+                copy.setLengthCm(line.getLengthCm());
+                copy.setWidthCm(line.getWidthCm());
+                copy.setHeightCm(line.getHeightCm());
+                copy.setWeightKg(line.getWeightKg());
+                copy.setVolumeM3(line.getVolumeM3());
+                lines.add(copy);
+            }
+        }
+        back.setLines(lines);
+        return back;
+    }
+
+    private static String text(String value, String fallback) {
+        if (value == null || value.trim().isEmpty()) {
+            return fallback;
+        }
+        return value.trim();
     }
 
     @Transactional

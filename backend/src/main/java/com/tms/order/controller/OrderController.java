@@ -59,6 +59,11 @@ public class OrderController {
         return R.ok(service.update(id, o));
     }
 
+    @PostMapping("/{id}/return")
+    public R<TransportOrder> openReturn(@PathVariable Long id) {
+        return R.ok(service.openReturn(id));
+    }
+
     @PostMapping("/{id}/cancel")
     public R<Void> cancel(@PathVariable Long id) {
         service.cancel(id);
