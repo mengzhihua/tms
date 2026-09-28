@@ -64,6 +64,8 @@ MySQL 配置通过 `mysql` profile 启用。
 > 若之前已在 Windows/GBK 环境启动过并生成了乱码数据，请停止后端、删除 `backend/data` 目录后重新启动，演示数据会重新初始化。
 > 用 `java -jar` 直接运行时请加 `-Dfile.encoding=UTF-8`。
 
+演示数据包含 `WB-DEMO-OVERDUE` 超时演示运单，扫描 SLA 后会生成到达超时异常。
+
 ### 前端
 
 要求 Node.js 18+：
