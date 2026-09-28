@@ -52,15 +52,48 @@
         </div>
       </el-col>
     </el-row>
+    <el-row :gutter="12" style="margin-top: 12px">
+      <el-col :span="8">
+        <div class="card">
+          <h3>异常汇总</h3>
+          <el-table :data="exceptionRows" size="small">
+            <el-table-column prop="key" label="类型/等级" />
+            <el-table-column prop="count" label="数量" />
+          </el-table>
+        </div>
+      </el-col>
+      <el-col :span="8">
+        <div class="card">
+          <h3>POD 状态</h3>
+          <el-table :data="podRows" size="small">
+            <el-table-column prop="status" label="状态" />
+            <el-table-column prop="count" label="数量" />
+          </el-table>
+        </div>
+      </el-col>
+      <el-col :span="8">
+        <div class="card">
+          <h3>承运商评级 TOP3</h3>
+          <el-table :data="ratingRows" size="small">
+            <el-table-column prop="carrierName" label="承运商" />
+            <el-table-column prop="score" label="得分" />
+            <el-table-column prop="grade" label="等级" />
+          </el-table>
+        </div>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { dashboard } from '../api'
+import { dashboard, exceptionApi, pod, rating } from '../api'
 import { fmt } from '../utils'
 
 const data = ref({})
+const exceptionRows = ref([])
+const podRows = ref([])
+const ratingRows = ref([])
 
 const toRows = (value) =>
   Object.entries(value || {}).map(([status, count]) => ({ status, count }))
@@ -78,6 +111,21 @@ const orderCounts = computed(() => toRows(data.value.orderStatusCounts))
 const waybillCounts = computed(() => toRows(data.value.waybillStatusCounts))
 
 onMounted(async () => {
-  data.value = await dashboard()
+  const [dashboardData, exceptionData, podData, ratingData] = await Promise.all([
+    dashboard(),
+    exceptionApi.summary(),
+    pod.summary(),
+    rating.rank()
+  ])
+  data.value = dashboardData
+  exceptionRows.value = Object.entries(exceptionData || {}).map(([key, count]) => ({
+    key,
+    count
+  }))
+  podRows.value = Object.entries(podData || {}).map(([status, count]) => ({
+    status,
+    count
+  }))
+  ratingRows.value = (ratingData || []).slice(0, 3)
 })
 </script>

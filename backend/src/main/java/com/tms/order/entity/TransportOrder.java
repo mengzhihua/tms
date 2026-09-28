@@ -24,6 +24,13 @@ public class TransportOrder extends BaseEntity {
             consigneeName,
             consigneePhone,
             consigneeAddress,
+            consigneeProvince,
+            consigneeCity,
+            serviceLevelCode,
+            regionCode,
+            carrierCode,
+            recommendRemark,
+            originOrderCode,
             status,
             waybillCode,
             signer,
@@ -39,7 +46,7 @@ public class TransportOrder extends BaseEntity {
             volumetricWeightKg,
             chargeableWeightKg,
             volumeRatio;
-    private LocalDateTime requiredDeliveryTime, signTime;
+    private LocalDateTime requiredDeliveryTime, signTime, promisedArriveTime;
     private Long waybillId;
     private Integer priority;
 

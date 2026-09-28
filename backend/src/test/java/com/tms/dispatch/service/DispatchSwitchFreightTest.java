@@ -9,15 +9,20 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.tms.basic.entity.Carrier;
+import com.tms.basic.mapper.CarrierCoverageMapper;
 import com.tms.basic.mapper.CarrierMapper;
 import com.tms.basic.mapper.DriverMapper;
 import com.tms.basic.mapper.RouteMapper;
+import com.tms.basic.mapper.ServiceLevelMapper;
 import com.tms.basic.mapper.VehicleMapper;
 import com.tms.billing.entity.FreightBill;
 import com.tms.billing.service.BillingService;
 import com.tms.common.CodeGenerator;
 import com.tms.dispatch.entity.Waybill;
 import com.tms.dispatch.mapper.WaybillMapper;
+import com.tms.exc.service.ExceptionService;
+import com.tms.openapi.RoutePushService;
+import com.tms.pod.service.PodService;
 import com.tms.order.entity.TransportOrder;
 import com.tms.order.mapper.TransportOrderMapper;
 import com.tms.order.service.VolumeService;
@@ -45,12 +50,17 @@ class DispatchSwitchFreightTest {
                 Mockito.mock(VehicleMapper.class),
                 Mockito.mock(DriverMapper.class),
                 carrierMapper,
+                Mockito.mock(CarrierCoverageMapper.class),
                 Mockito.mock(RouteMapper.class),
                 eventMapper,
                 Mockito.mock(CodeGenerator.class),
                 Mockito.mock(VolumeService.class),
                 billingService,
-                Mockito.mock(ThirdPartyLogisticsGateway.class));
+                Mockito.mock(ThirdPartyLogisticsGateway.class),
+                Mockito.mock(ServiceLevelMapper.class),
+                Mockito.mock(PodService.class),
+                Mockito.mock(ExceptionService.class),
+                Mockito.mock(RoutePushService.class));
 
         Waybill waybill = new Waybill();
         waybill.setId(1L);
@@ -105,12 +115,17 @@ class DispatchSwitchFreightTest {
                 Mockito.mock(VehicleMapper.class),
                 Mockito.mock(DriverMapper.class),
                 Mockito.mock(CarrierMapper.class),
+                Mockito.mock(CarrierCoverageMapper.class),
                 Mockito.mock(RouteMapper.class),
                 eventMapper,
                 Mockito.mock(CodeGenerator.class),
                 Mockito.mock(VolumeService.class),
                 Mockito.mock(BillingService.class),
-                Mockito.mock(ThirdPartyLogisticsGateway.class));
+                Mockito.mock(ThirdPartyLogisticsGateway.class),
+                Mockito.mock(ServiceLevelMapper.class),
+                Mockito.mock(PodService.class),
+                Mockito.mock(ExceptionService.class),
+                Mockito.mock(RoutePushService.class));
 
         Waybill waybill = new Waybill();
         waybill.setId(2L);
@@ -144,18 +159,24 @@ class DispatchSwitchFreightTest {
                 Mockito.mock(VehicleMapper.class),
                 Mockito.mock(DriverMapper.class),
                 Mockito.mock(CarrierMapper.class),
+                Mockito.mock(CarrierCoverageMapper.class),
                 Mockito.mock(RouteMapper.class),
                 eventMapper,
                 Mockito.mock(CodeGenerator.class),
                 Mockito.mock(VolumeService.class),
                 billingService,
-                Mockito.mock(ThirdPartyLogisticsGateway.class));
+                Mockito.mock(ThirdPartyLogisticsGateway.class),
+                Mockito.mock(ServiceLevelMapper.class),
+                Mockito.mock(PodService.class),
+                Mockito.mock(ExceptionService.class),
+                Mockito.mock(RoutePushService.class));
 
         Waybill waybill = new Waybill();
         waybill.setId(4L);
         waybill.setCode("WB-NEW");
         waybill.setCarrierCode("SELF01");
         waybill.setCarrierType("SELF");
+        waybill.setLoadStatus("LOADED");
         waybill.setStatus("CREATED");
         waybill.setExceptionFlag(true);
         TransportOrder order = new TransportOrder();
@@ -166,6 +187,9 @@ class DispatchSwitchFreightTest {
         when(waybillMapper.selectById(4L)).thenReturn(waybill);
         when(orderMapper.selectList(any())).thenReturn(Collections.singletonList(order));
         when(billingService.createBill(any(), any(), any())).thenReturn(new BigDecimal("18"));
+        FreightBill bill = new FreightBill();
+        bill.setAmount(new BigDecimal("18"));
+        when(billingService.bills(4L)).thenReturn(Collections.singletonList(bill));
         when(eventMapper.selectList(any())).thenReturn(Collections.emptyList());
 
         Waybill updated = dispatch.syncTrackByCode("WB-NEW");
@@ -185,12 +209,17 @@ class DispatchSwitchFreightTest {
                 Mockito.mock(VehicleMapper.class),
                 Mockito.mock(DriverMapper.class),
                 Mockito.mock(CarrierMapper.class),
+                Mockito.mock(CarrierCoverageMapper.class),
                 Mockito.mock(RouteMapper.class),
                 Mockito.mock(TrackingEventMapper.class),
                 Mockito.mock(CodeGenerator.class),
                 Mockito.mock(VolumeService.class),
                 Mockito.mock(BillingService.class),
-                Mockito.mock(ThirdPartyLogisticsGateway.class));
+                Mockito.mock(ThirdPartyLogisticsGateway.class),
+                Mockito.mock(ServiceLevelMapper.class),
+                Mockito.mock(PodService.class),
+                Mockito.mock(ExceptionService.class),
+                Mockito.mock(RoutePushService.class));
 
         Waybill waybill = new Waybill();
         waybill.setId(3L);

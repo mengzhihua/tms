@@ -12,6 +12,7 @@ import lombok.EqualsAndHashCode;
 public class TransportOrderLine extends BaseEntity {
     private Long orderId;
     private String itemCode, itemName;
+    private String packageCode;
     private BigDecimal qty,
             lengthCm,
             widthCm,
