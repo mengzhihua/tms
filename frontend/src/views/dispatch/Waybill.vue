@@ -92,7 +92,7 @@
         </el-button>
         <el-button v-if="current.status === 'DISPATCHED'" type="primary" @click="operate('depart')">发车</el-button>
         <el-button
-          v-if="current.status === 'DISPATCHED' && current.carrierType === 'SELF'"
+          v-if="current.status === 'DISPATCHED' && current.carrierType === 'SELF' && current.loadStatus !== 'LOADED'"
           type="warning"
           @click="openLoad(current)"
         >
