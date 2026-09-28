@@ -1,6 +1,7 @@
 package com.tms.dispatch.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.tms.basic.entity.Carrier;
 import com.tms.basic.entity.CarrierCoverage;
 import com.tms.basic.entity.Driver;
@@ -309,7 +310,15 @@ public class DispatchService {
         o.setPodImage(req.podImage);
         o.setPodRemark(req.remark);
         o.setStatus(Boolean.TRUE.equals(req.exception) ? "EXCEPTION" : "DELIVERED");
-        orderMapper.updateById(o);
+        int updated =
+                orderMapper.update(
+                        o,
+                        new LambdaUpdateWrapper<TransportOrder>()
+                                .eq(TransportOrder::getId, o.getId())
+                                .notIn(TransportOrder::getStatus, "DELIVERED", "EXCEPTION"));
+        if (updated == 0) {
+            throw new BizException("订单 " + o.getCode() + " 已签收");
+        }
         routePushService.push(
                 o.getCustomerCode(),
                 o.getCode(),
@@ -529,7 +538,15 @@ public class DispatchService {
         w.setSealNo(req.sealNo);
         w.setLoaderName(req.loaderName);
         w.setLoadTime(LocalDateTime.now());
-        waybillMapper.updateById(w);
+        int updated =
+                waybillMapper.update(
+                        w,
+                        new LambdaUpdateWrapper<Waybill>()
+                                .eq(Waybill::getId, w.getId())
+                                .and(q -> q.isNull(Waybill::getLoadStatus).or().ne(Waybill::getLoadStatus, "LOADED")));
+        if (updated == 0) {
+            throw new BizException("运单已完成装车交接");
+        }
         event(w, null, "LOADED", null, null, "装车交接完成");
         return load(id);
     }
