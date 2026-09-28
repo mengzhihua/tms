@@ -1,6 +1,7 @@
 package com.tms.exc.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tms.common.R;
 import com.tms.exc.entity.TransportException;
@@ -29,10 +30,10 @@ public class ExceptionController {
             @RequestParam(required = false) String carrierCode,
             @RequestParam(required = false) String claimStatus) {
         QueryWrapper<TransportException> query = new QueryWrapper<>();
-        query.eq(status != null, "status", status);
-        query.eq(type != null, "type", type);
-        query.eq(carrierCode != null, "carrier_code", carrierCode);
-        query.eq(claimStatus != null, "claim_status", claimStatus);
+        query.eq(StringUtils.isNotBlank(status), "status", status);
+        query.eq(StringUtils.isNotBlank(type), "type", type);
+        query.eq(StringUtils.isNotBlank(carrierCode), "carrier_code", carrierCode);
+        query.eq(StringUtils.isNotBlank(claimStatus), "claim_status", claimStatus);
         query.orderByDesc("id");
         return R.ok(mapper.selectPage(new Page<>(current, size), query));
     }
