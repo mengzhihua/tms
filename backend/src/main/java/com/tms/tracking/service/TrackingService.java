@@ -38,11 +38,7 @@ public class TrackingService {
                                 new LambdaQueryWrapper<Vehicle>().eq(Vehicle::getPlateNo, r.vehiclePlate));
         Waybill w = r.waybillId == null ? null : waybillMapper.selectById(r.waybillId);
         if (w == null && v != null) {
-            w =
-                    waybillMapper.selectOne(
-                            new LambdaQueryWrapper<Waybill>()
-                                    .eq(Waybill::getVehiclePlate, v.getPlateNo())
-                                    .eq(Waybill::getStatus, "IN_TRANSIT"));
+            w = activeWaybill(v.getPlateNo());
         }
         if (v != null) {
             v.setLng(r.lng);
@@ -101,6 +97,7 @@ public class TrackingService {
                     new BigDecimal(i)
                             .divide(new BigDecimal(Math.max(1, steps - 1)), 8, java.math.RoundingMode.HALF_UP);
             GpsReq r = new GpsReq();
+            r.setWaybillId(w.getId());
             r.setVehiclePlate(w.getVehiclePlate());
             r.setLng(aLng.add(bLng.subtract(aLng).multiply(f)));
             r.setLat(aLat.add(bLat.subtract(aLat).multiply(f)));
@@ -110,17 +107,22 @@ public class TrackingService {
         return total;
     }
 
+    private Waybill activeWaybill(String plateNo) {
+        List<Waybill> list =
+                waybillMapper.selectList(
+                        new LambdaQueryWrapper<Waybill>()
+                                .eq(Waybill::getVehiclePlate, plateNo)
+                                .eq(Waybill::getStatus, "IN_TRANSIT")
+                                .orderByDesc(Waybill::getId));
+        return list.isEmpty() ? null : list.get(0);
+    }
+
     public List<Map<String, Object>> vehicles() {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Vehicle v : vehicleMapper.selectList(null)) {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("vehicle", v);
-            Waybill w =
-                    waybillMapper.selectOne(
-                            new LambdaQueryWrapper<Waybill>()
-                                    .eq(Waybill::getVehiclePlate, v.getPlateNo())
-                                    .eq(Waybill::getStatus, "IN_TRANSIT"));
-            m.put("waybill", w);
+            m.put("waybill", activeWaybill(v.getPlateNo()));
             out.add(m);
         }
         return out;
