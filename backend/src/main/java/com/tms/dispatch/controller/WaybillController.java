@@ -8,6 +8,7 @@ import com.tms.dispatch.mapper.WaybillMapper;
 import com.tms.dispatch.service.DispatchService;
 import com.tms.dispatch.service.DispatchService.CreateReq;
 import com.tms.dispatch.service.DispatchService.SignReq;
+import com.tms.dispatch.service.DispatchService.LoadReq;
 import com.tms.order.entity.TransportOrder;
 import com.tms.tracking.entity.TrackingEvent;
 import java.util.List;
@@ -58,6 +59,16 @@ public class WaybillController {
     @PostMapping("/{id}/depart")
     public R<Waybill> depart(@PathVariable Long id) {
         return R.ok(service.depart(id));
+    }
+
+    @PostMapping("/{id}/load")
+    public R<Waybill> load(@PathVariable Long id, @RequestBody LoadReq req) {
+        return R.ok(service.loadVehicle(id, req));
+    }
+
+    @GetMapping("/{id}/loading-sheet")
+    public R<java.util.Map<String, Object>> loadingSheet(@PathVariable Long id) {
+        return R.ok(service.loadingSheet(id));
     }
 
     @PostMapping("/{id}/arrive")

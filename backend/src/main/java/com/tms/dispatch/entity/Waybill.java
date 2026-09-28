@@ -25,12 +25,22 @@ public class Waybill extends BaseEntity {
             fromSiteCode,
             thirdPartyNo,
             thirdPartyStatus,
+            serviceLevelCode,
+            loadStatus,
+            sealNo,
+            loaderName,
             status,
             exceptionRemark;
-    private LocalDateTime plannedDepartTime, plannedArriveTime, actualDepartTime, actualArriveTime;
+    private LocalDateTime plannedDepartTime,
+            plannedArriveTime,
+            actualDepartTime,
+            actualArriveTime,
+            promisedArriveTime,
+            loadTime;
     private Integer orderCount;
     private BigDecimal totalWeightKg, totalVolumeM3, weightLoadRate, volumeLoadRate, freightAmount;
     private Boolean exceptionFlag;
+    private Boolean onTime;
 
     @TableField(exist = false)
     private List<TransportOrder> orders;

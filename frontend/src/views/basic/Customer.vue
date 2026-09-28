@@ -15,6 +15,9 @@ const columns = [
   { prop: 'city', label: '城市' },
   { prop: 'address', label: '地址', span: 24 },
   { prop: 'lng', label: '经度', type: 'number' },
-  { prop: 'lat', label: '纬度', type: 'number' }
+  { prop: 'lat', label: '纬度', type: 'number' },
+  { prop: 'apiKey', label: '开放接口密钥' },
+  { prop: 'callbackUrl', label: '回调地址', span: 24 },
+  { prop: 'pushEnabled', label: '启用回调', type: 'bool' }
 ]
 </script>

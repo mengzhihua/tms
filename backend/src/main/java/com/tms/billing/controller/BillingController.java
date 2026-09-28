@@ -1,6 +1,7 @@
 package com.tms.billing.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tms.billing.entity.FreightBill;
 import com.tms.billing.mapper.FreightBillMapper;
@@ -27,7 +28,7 @@ public class BillingController {
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String status) {
         QueryWrapper<FreightBill> q = new QueryWrapper<>();
-        if (status != null) {
+        if (StringUtils.isNotBlank(status)) {
             q.eq("status", status);
         }
         q.orderByDesc("id");

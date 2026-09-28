@@ -232,7 +232,7 @@ async function loadOptions() {
 }
 
 async function load() {
-  orders.value = await dispatch.pending({})
+  orders.value = await dispatch.pending({ carrierCode: form.carrierCode })
   await checkLoad()
 }
 
@@ -315,6 +315,7 @@ async function carrierChanged() {
     form.routeCode = ''
     loadCheckResult.weightRate = 0
     loadCheckResult.volumeRate = 0
+    await load()
     return
   }
   const firstDriver = filteredDrivers.value[0]
@@ -322,6 +323,9 @@ async function carrierChanged() {
     form.driverCode = firstDriver?.code || ''
   }
   await checkLoad()
+  if (orders.value.length > 0) {
+    await load()
+  }
 }
 
 async function checkLoad() {
