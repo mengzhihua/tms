@@ -301,6 +301,9 @@ public class DispatchService {
         if (o == null || !id.equals(o.getWaybillId())) {
             throw new BizException("订单不属于该运单");
         }
+        if ("DELIVERED".equals(o.getStatus()) || "EXCEPTION".equals(o.getStatus())) {
+            throw new BizException("订单 " + o.getCode() + " 已签收");
+        }
         o.setSigner(req.signer);
         o.setSignTime(req.signTime == null ? LocalDateTime.now() : req.signTime);
         o.setPodImage(req.podImage);
@@ -503,6 +506,9 @@ public class DispatchService {
         Waybill w = require(id);
         if (!"DISPATCHED".equals(w.getStatus())) {
             throw new BizException("仅DISPATCHED运单可装车");
+        }
+        if ("LOADED".equals(w.getLoadStatus())) {
+            throw new BizException("运单已完成装车交接");
         }
         Set<String> expected = new HashSet<>();
         for (TransportOrder order : orders(w)) {
