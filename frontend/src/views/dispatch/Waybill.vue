@@ -29,7 +29,7 @@
             </el-button>
             <el-button v-if="row.status === 'DISPATCHED'" link @click="action(row, 'depart')">发车</el-button>
             <el-button
-              v-if="row.status === 'DISPATCHED' && row.carrierType === 'SELF'"
+              v-if="row.status === 'DISPATCHED' && row.carrierType === 'SELF' && row.loadStatus !== 'LOADED'"
               link
               type="warning"
               @click="openLoad(row)"
