@@ -159,8 +159,7 @@ public class ExceptionService {
                 mapper.selectCount(
                         new LambdaQueryWrapper<TransportException>()
                                 .eq(TransportException::getWaybillId, waybill.getId())
-                                .eq(TransportException::getType, type)
-                                .ne(TransportException::getStatus, "CLOSED"));
+                                .eq(TransportException::getType, type));
         if (count > 0) {
             return 0;
         }
