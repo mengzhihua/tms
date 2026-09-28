@@ -74,7 +74,7 @@
             <el-option
               v-for="item in waybills"
               :key="item.id"
-              :label="`${item.code}（${labelOf(statusOptions, item.status)}）`"
+              :label="`${item.code}（${item.status}）`"
               :value="item"
             />
           </el-select>
