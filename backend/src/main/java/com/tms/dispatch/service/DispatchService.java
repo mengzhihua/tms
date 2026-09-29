@@ -301,7 +301,7 @@ public class DispatchService {
         if (!"IN_TRANSIT".equals(w.getStatus()) && !"ARRIVED".equals(w.getStatus())) {
             throw new BizException("运单状态不可签收");
         }
-        TransportOrder o = orderMapper.selectById(req.orderId);
+        TransportOrder o = orderMapper.lockById(req.orderId);
         if (o == null || !id.equals(o.getWaybillId())) {
             throw new BizException("订单不属于该运单");
         }
@@ -357,7 +357,7 @@ public class DispatchService {
                 null,
                 req.remark);
         boolean done = true;
-        for (TransportOrder x : orders(w)) {
+        for (TransportOrder x : orderMapper.lockByWaybillId(w.getId())) {
             if (!"DELIVERED".equals(x.getStatus()) && !"EXCEPTION".equals(x.getStatus())) {
                 done = false;
             }
@@ -466,7 +466,7 @@ public class DispatchService {
         if (!"ARRIVED".equals(w.getStatus())) {
             return load(id);
         }
-        for (TransportOrder order : orders(w)) {
+        for (TransportOrder order : orderMapper.lockByWaybillId(w.getId())) {
             if (!"DELIVERED".equals(order.getStatus()) && !"EXCEPTION".equals(order.getStatus())) {
                 SignReq signReq = new SignReq();
                 signReq.setOrderId(order.getId());
