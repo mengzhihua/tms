@@ -294,7 +294,10 @@ public class DispatchService {
 
     @Transactional
     public Waybill sign(Long id, SignReq req) {
-        Waybill w = require(id);
+        Waybill w = waybillMapper.lockById(id);
+        if (w == null) {
+            throw new BizException("运单不存在");
+        }
         if (!"IN_TRANSIT".equals(w.getStatus()) && !"ARRIVED".equals(w.getStatus())) {
             throw new BizException("运单状态不可签收");
         }
@@ -543,8 +546,13 @@ public class DispatchService {
                         w,
                         new LambdaUpdateWrapper<Waybill>()
                                 .eq(Waybill::getId, w.getId())
+                                .eq(Waybill::getStatus, "DISPATCHED")
                                 .and(q -> q.isNull(Waybill::getLoadStatus).or().ne(Waybill::getLoadStatus, "LOADED")));
         if (updated == 0) {
+            Waybill latest = waybillMapper.selectById(w.getId());
+            if (latest != null && !"DISPATCHED".equals(latest.getStatus())) {
+                throw new BizException("仅DISPATCHED运单可装车");
+            }
             throw new BizException("运单已完成装车交接");
         }
         event(w, null, "LOADED", null, null, "装车交接完成");
