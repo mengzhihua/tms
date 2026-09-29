@@ -448,7 +448,10 @@ public class DispatchService {
 
     @Transactional
     public Waybill completeThirdParty(Long id) {
-        Waybill w = require(id);
+        Waybill w = waybillMapper.lockById(id);
+        if (w == null) {
+            throw new BizException("运单不存在");
+        }
         if ("DISPATCHED".equals(w.getStatus())) {
             depart(id);
             w = require(id);
@@ -549,7 +552,7 @@ public class DispatchService {
                                 .eq(Waybill::getStatus, "DISPATCHED")
                                 .and(q -> q.isNull(Waybill::getLoadStatus).or().ne(Waybill::getLoadStatus, "LOADED")));
         if (updated == 0) {
-            Waybill latest = waybillMapper.selectById(w.getId());
+            Waybill latest = waybillMapper.lockById(w.getId());
             if (latest != null && !"DISPATCHED".equals(latest.getStatus())) {
                 throw new BizException("仅DISPATCHED运单可装车");
             }
