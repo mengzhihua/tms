@@ -402,7 +402,10 @@ public class DispatchService {
 
     @Transactional
     public Waybill syncTrack(Long id) {
-        Waybill w = require(id);
+        Waybill w = waybillMapper.lockById(id);
+        if (w == null) {
+            throw new BizException("运单不存在");
+        }
         if (w.getThirdPartyNo() == null) {
             throw new BizException("运单没有三方单号");
         }
