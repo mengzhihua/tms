@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS tms_transport_order (
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_tms_transport_order_waybill_id ON tms_transport_order (waybill_id);
 
 CREATE TABLE IF NOT EXISTS tms_transport_order_line (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
